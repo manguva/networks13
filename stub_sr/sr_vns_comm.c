@@ -573,6 +573,8 @@ sr_ether_addrs_match_interface( struct sr_instance* sr, /* borrowed */
  * to be injected onto the wire.
  *
  *---------------------------------------------------------------------------*/
+//buf points to the 42 bytes ARP packet
+
 
 int sr_send_packet(struct sr_instance* sr /* borrowed */,
                          uint8_t* buf /* borrowed */ ,
