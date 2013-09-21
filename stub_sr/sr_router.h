@@ -36,6 +36,14 @@
 struct sr_if;
 struct sr_rt;
 
+/* ARP Packet */
+typedef struct arpPacket
+{
+    sr_ehthernet_hdr et_hdr;
+    sr_arphdr arp_hdr;
+} ARPPACKET, *PARPPACKET;
+
+
 /* ----------------------------------------------------------------------------
  * struct sr_instance
  *

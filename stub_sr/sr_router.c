@@ -98,10 +98,18 @@ void sr_handlepacket(struct sr_instance* sr,
         entry->interface_type = interface;
 	entry->next = NULL;
 
+
         add_arp_entry(entry, &arp_table);
   //      pretty_print_arp_table(&arp_table);
     /*retrieving arp packet information */
+
+    printf("*** -> Received packet of length %d \n",len);
+
+    //for the to be sent Packet
+    ARPPACKET buf = getSentARPPacket(.....);
     
+    sr_send_packet(sr, buf, 42, interface);
+
 }/* end sr_ForwardPacket */
 
 
@@ -154,3 +162,60 @@ void pretty_print_arp_table(arp_cache_entry *arp_cache){
  * Method:
  *
  *---------------------------------------------------------------------*/
+
+void assignBroadcastEthernetAddr(uint8_t* ether_dhost)
+{
+    for(int i = 0; i < 6; i++)
+        ether_dhost[i] = htons(255);    
+}
+
+void assignDefaultTargetEthernetAddr(unsigned char* ar_tha)
+{
+    for(int i = 0; i < 6; i++)
+        ether_dhost[i] = htons(0);    
+}
+
+void assignSourceEthernetAddrFirst(uint8_t* ether_shost, uint8_t* info)
+{
+    /*.....wait for wallace value*/
+}
+
+void assignSourceEthernetAddrSecond(unsigned char* ether_shost, unsigned char* info)
+{
+    /*.....wait for wallace value*/
+}
+
+void assignIPAddr(uint32_t ipAddr, uint32_t info)
+{
+    /*.....wait for wallace value*/
+}
+
+/*----------------------------------------------------------------------
+ *  Construct the ARP packet 
+ *  pass the constructed ARP packet as buf in sr_send_packet()
+ *----------------------------------------------------------------------*/
+ARPPACKET getSentARPPacket(struct arp_entry* entry)
+{
+    ARPACKET arpPacket = 0;
+    assignBroadcastEthernetAddr(arpPacket->et_hdr->ether_dhost, 6); 
+   //................wait......
+    assignSourceEthernetAddrFirst(arpPacket->et_hdr->ether_shost, ....);
+   
+    arpPacket->et_hdr->ether_type = htons(2054); 
+    arpPacket->arp_hdr->ar_hrd = htons(1);
+    arpPacket->arp_hdr->ar_pro = htons(2048);
+    arpPacket->arp_hdr->ar_hln = (unsigned char*)htons(6);
+    arpPacket->arp_hdr->ar_pln = (unsigned char*)htons(4);
+    arpPacket->arp_hdr->ar_op = htons(1);
+    
+    //..........wait............
+    assignSourceEthernetAddrSecond(arpPacket->arp_hdr->ar_sha, ...);
+    //............wait..........
+    assignIpAddr(arpPacket->arp_hdr->ar_sip, ....);
+    
+    assignDefaultTargetEthernetAdd(arpPacket->arp_hdr->artha);
+    //...........wait............
+    assignIpAddr(arpPacket->arp_hdr->ar_tip, ...);
+
+    return arpPacket;
+} 
