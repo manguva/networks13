@@ -70,7 +70,6 @@ int main(int argc, char **argv)
     struct sr_instance sr;
 
     printf("Using %s\n", VERSION_INFO);
-
     while ((c = getopt(argc, argv, "ha:s:v:p:u:t:r:l:T:")) != EOF)
     {
         switch (c)
@@ -108,6 +107,7 @@ int main(int argc, char **argv)
                 break;
         } /* switch */
     } /* -- while -- */
+
 
     /* -- zero out sr instance -- */
     sr_init_instance(&sr);

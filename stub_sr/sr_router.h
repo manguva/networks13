@@ -60,6 +60,21 @@ struct sr_instance
     FILE* logfile;
 };
 
+/* structure of arp entry node */
+struct arp_entry
+{
+	uint8_t *ip_address;
+	uint8_t *mac_address;
+	char *interface_type;
+	struct arp_entry *next;
+};
+
+/*defining the arp table, which is a linked list of arp entries */
+typedef struct arp_entry arp_cache_entry;
+
+/*define global variable arp_table */
+arp_cache_entry arp_table;  
+
 /* -- sr_main.c -- */
 int sr_verify_routing_table(struct sr_instance* sr);
 
@@ -71,6 +86,8 @@ int sr_read_from_server(struct sr_instance* );
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
+void add_arp_entry(arp_cache_entry *, arp_cache_entry *);
+void pretty_print_arp_table(arp_cache_entry *);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );
