@@ -174,50 +174,50 @@ void assignBroadcastEthernetAddr(uint8_t* ether_dhost)
 void assignDefaultTargetEthernetAddr(unsigned char* ar_tha)
 {
     for(int i = 0; i < 6; i++)
-        ether_dhost[i] = htons(0);    
+        ar_tha[i] = htons(0);    
 }
 
 void assignSourceEthernetAddrFirst(uint8_t* ether_shost, uint8_t* info)
 {
-    /*.....wait for wallace value*/
+    for(int i = 0; i < 6; i++)
+        ether_shost[i] = info[i]; 
 }
 
-void assignSourceEthernetAddrSecond(unsigned char* ether_shost, unsigned char* info)
+void assignSourceEthernetAddrSecond(unsigned char* ar_sha, unsigned char* info)
 {
-    /*.....wait for wallace value*/
+    for(int i = 0; i < 6; i++)
+        ar_sha[i] = info[i];
 }
 
-void assignIPAddr(uint32_t ipAddr, uint32_t info)
+void assignIPAddr(uint32_t* ipAddr, uint32_t info)
 {
-    /*.....wait for wallace value*/
+    ipAddr = info;
 }
 
 /*----------------------------------------------------------------------
  *  Construct the ARP packet 
  *  pass the constructed ARP packet as buf in sr_send_packet()
  *----------------------------------------------------------------------*/
-ARPPACKET getSentARPPacket(struct arp_entry* entry)
+ARPPACKET getSentARPPacket(struct arp_entry* entry, unsigned char* sender_mac_address_unsignchar, uint8_t* sender_mac_address_uint8_t)
 {
     ARPACKET arpPacket = 0;
-    assignBroadcastEthernetAddr(arpPacket->et_hdr->ether_dhost, 6); 
-   //................wait......
-    assignSourceEthernetAddrFirst(arpPacket->et_hdr->ether_shost, ....);
-   
+    assignBroadcastEthernetAddr(arpPacket->et_hdr->ether_dhost); 
     arpPacket->et_hdr->ether_type = htons(2054); 
     arpPacket->arp_hdr->ar_hrd = htons(1);
     arpPacket->arp_hdr->ar_pro = htons(2048);
     arpPacket->arp_hdr->ar_hln = (unsigned char*)htons(6);
     arpPacket->arp_hdr->ar_pln = (unsigned char*)htons(4);
     arpPacket->arp_hdr->ar_op = htons(1);
-    
-    //..........wait............
-    assignSourceEthernetAddrSecond(arpPacket->arp_hdr->ar_sha, ...);
-    //............wait..........
-    assignIpAddr(arpPacket->arp_hdr->ar_sip, ....);
-    
     assignDefaultTargetEthernetAdd(arpPacket->arp_hdr->artha);
-    //...........wait............
-    assignIpAddr(arpPacket->arp_hdr->ar_tip, ...);
+
+    //wait for wallace...........................
+    //.........................................
+    assignSourceEthernetAddrSecond(arpPacket->arp_hdr->ar_sha, sender_mac_address_unsignchar);
+    assignIpAddr(& arpPacket->arp_hdr->ar_sip, sender_ip_address);
+    assignSourceEthernetAddrFirst(arpPacket->et_hdr->ether_shost, sender_mac_address_uint8_t); 
+    assignIpAddr(& arpPacket->arp_hdr->ar_tip, target_ip_address);
+    
+    //...................................................
 
     return arpPacket;
 } 
