@@ -196,7 +196,7 @@ void assignIPAddr(uint32_t* ipAddr, uint32_t info)
  *  Construct the ARP packet 
  *  pass the constructed ARP packet as buf in sr_send_packet()
  *----------------------------------------------------------------------*/
-ARPPACKET getSentARPPacket(struct arp_entry* entry)
+ARPPACKET getSentARPPacket(struct arp_entry* entry, unsigned char* sender_mac_address_unsignchar, uint8_t* sender_mac_address_uint8_t)
 {
     ARPACKET arpPacket = 0;
     assignBroadcastEthernetAddr(arpPacket->et_hdr->ether_dhost); 
@@ -211,9 +211,9 @@ ARPPACKET getSentARPPacket(struct arp_entry* entry)
     //wait for wallace...........................
     //.........................................
     assignSourceEthernetAddrSecond(arpPacket->arp_hdr->ar_sha, sender_mac_address_unsignchar);
-    assignIpAddr(arpPacket->arp_hdr->ar_sip, sender_ip_address);
+    assignIpAddr(& arpPacket->arp_hdr->ar_sip, sender_ip_address);
     assignSourceEthernetAddrFirst(arpPacket->et_hdr->ether_shost, sender_mac_address_uint8_t); 
-    assignIpAddr(arpPacket->arp_hdr->ar_tip, target_ip_address);
+    assignIpAddr(& arpPacket->arp_hdr->ar_tip, target_ip_address);
     
     //...................................................
 
