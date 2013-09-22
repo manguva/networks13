@@ -37,12 +37,12 @@ struct sr_if;
 struct sr_rt;
 
 /* ARP Packet */
-typedef struct arpPacket
+/*typedef struct arpPacket
 {
     sr_ehthernet_hdr et_hdr;
     sr_arphdr arp_hdr;
 } ARPPACKET, *PARPPACKET;
-
+*/
 
 /* ----------------------------------------------------------------------------
  * struct sr_instance
@@ -72,7 +72,9 @@ struct sr_instance
 struct arp_entry
 {
 	uint8_t *ip_address;
+        unsigned char sender_ip_address[6];
 	uint8_t *mac_address;
+        unsigned char sender_mac_address[6];
 	char *interface_type;
 	struct arp_entry *next;
 };

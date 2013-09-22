@@ -92,23 +92,23 @@ void sr_handlepacket(struct sr_instance* sr,
         memcpy(sender_ip_address, packet + 28, 4);
      }
     }
-        arp_cache_entry copy;
 	entry->mac_address = sender_mac_address;
         entry->ip_address = sender_ip_address;
         entry->interface_type = interface;
+        memcpy(entry->sender_mac_address, sender_mac_address, 6);
+        memcpy(entry->sender_ip_address, sender_ip_address, 6);
 	entry->next = NULL;
 
 
         add_arp_entry(entry, &arp_table);
-  //      pretty_print_arp_table(&arp_table);
+        pretty_print_arp_table(&arp_table);
     /*retrieving arp packet information */
 
     printf("*** -> Received packet of length %d \n",len);
-
     //for the to be sent Packet
-    ARPPACKET buf = getSentARPPacket(.....);
+    //ARPPACKET buf = getSentARPPacket(.....);
     
-    sr_send_packet(sr, buf, 42, interface);
+//    sr_send_packet(sr, buf, 42, interface);
 
 }/* end sr_ForwardPacket */
 
@@ -120,6 +120,8 @@ void add_arp_entry(arp_cache_entry *entry, arp_cache_entry *arp_cache){
 		arp_cache->ip_address = entry->ip_address;  
 		arp_cache->mac_address= entry->mac_address;
 		arp_cache->interface_type = entry->interface_type;
+		memcpy(arp_cache->sender_mac_address, entry->sender_mac_address, 6);
+        	memcpy(arp_cache->sender_ip_address, entry->sender_ip_address, 6);
 		arp_cache->next = NULL;
 		return;
 	}
@@ -152,6 +154,7 @@ void pretty_print_arp_table(arp_cache_entry *arp_cache){
 //			printf("%hx" , arp_pointer->ip_address[i]);
 			i++;
 		}
+   		printf("Char representation: %s\n", arp_pointer->sender_mac_address);
   //              printf("\n");
 		arp_pointer = arp_pointer->next;
         }
@@ -162,7 +165,6 @@ void pretty_print_arp_table(arp_cache_entry *arp_cache){
  * Method:
  *
  *---------------------------------------------------------------------*/
-
 void assignBroadcastEthernetAddr(uint8_t* ether_dhost)
 {
     for(int i = 0; i < 6; i++)
