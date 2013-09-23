@@ -75,91 +75,48 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(interface);
 	
     uint8_t *sender_mac_address = (uint8_t *)malloc(6 * sizeof(uint8_t));
-    uint8_t *sender_ip_address = (uint8_t *)malloc(4 * sizeof(uint8_t));
+    uint8_t *sender_ip_address = (uint8_t *)malloc(sizeof(uint8_t) * 4);
     arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
 //    printf("Received packet\n");
-    int i = 0;
-    while ( i < len){
-        i++;
-    }
+    int i = len;
+
     /*retrieving arp packet information */
     if(i>15){
-	if( packet[12] == 8 && packet[13] == 6){
-//		printf("Packet is of type arp\n");
-	//retrieve mac address of sender
-       
-	memcpy(sender_mac_address, packet + 6, 6);
-        memcpy(sender_ip_address, packet + 28, 4);
-     }
+        if( packet[12] == htons(8) && packet[13] == htons(6)){
+            //		printf("Packet is of type arp\n");
+            //retrieve mac address, and IP address of server
+            memcpy(server_mac_address, packet + 6, 6);
+            memcpy(server_ip_address, packet + 28, 4);
+        }
     }
-	entry->mac_address = sender_mac_address;
-        entry->ip_address = sender_ip_address;
-        entry->interface_type = interface;
-        memcpy(entry->sender_mac_address, sender_mac_address, 6);
-        memcpy(entry->sender_ip_address, sender_ip_address, 6);
-	entry->next = NULL;
 
+    //Building the Arp cache entry
+    
+    //a function to convert value sender_ip_address to the ip_address format
+    //.......
+    entry->ip_address = server_ip_address;
+    //....
+    
+    memcpy(entry->mac_address_uint8_t, server_mac_address, 6);
+    memcpy(entry->mac_address_unsigned_char, server_mac_address, 6);
+    entry->interface_type = interface;
+    entry->next = NULL;
 
-        add_arp_entry(entry, &arp_table);
-        pretty_print_arp_table(&arp_table);
+    add_arp_entry(entry, &arp_table);
+
+//    pretty_print_arp_table(&arp_table);
     /*retrieving arp packet information */
 
     printf("*** -> Received packet of length %d \n",len);
-    //for the to be sent Packet
-    //ARPPACKET buf = getSentARPPacket(.....);
+    //send the broadcasting ARP packet
+    PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac_address_unsigned_char, uint32_t s_IP, uint32_t d_IP)
     
-//    sr_send_packet(sr, buf, 42, interface);
+    PARPPACKET buf = ()getSentARPPacket();
+    sr_send_packet(sr, buf, 42, interface);
 
 }/* end sr_ForwardPacket */
 
 
-/*code to add an entry to the arp table */
-void add_arp_entry(arp_cache_entry *entry, arp_cache_entry *arp_cache){
-     	assert(entry);
-	if(!arp_cache->ip_address){
-		arp_cache->ip_address = entry->ip_address;  
-		arp_cache->mac_address= entry->mac_address;
-		arp_cache->interface_type = entry->interface_type;
-		memcpy(arp_cache->sender_mac_address, entry->sender_mac_address, 6);
-        	memcpy(arp_cache->sender_ip_address, entry->sender_ip_address, 6);
-		arp_cache->next = NULL;
-		return;
-	}
-        assert(arp_cache);
-
-	//search if entry already exists
-        arp_cache_entry *arp_pointer = arp_cache;
-	while(arp_pointer != NULL){
-                if (!memcmp(arp_pointer->ip_address, entry->ip_address, 4)){
-			//IP Address already exists in cache
-//  			printf("IP Address exists is cache already\n");
-                        return;
-		}
-                arp_pointer = arp_pointer->next;
-        }	
-
-        while(arp_pointer->next != NULL){
-		arp_pointer = arp_pointer->next;
-        }
-        arp_pointer->next = entry;
-}
-
-/* method to pretty print arp table */
-void pretty_print_arp_table(arp_cache_entry *arp_cache){
-	arp_cache_entry *arp_pointer = arp_cache;
-        int i = 0;
-    //    printf("IP address: \n");
-	while(arp_pointer){
-                while (i < 4){
-//			printf("%hx" , arp_pointer->ip_address[i]);
-			i++;
-		}
-   		printf("Char representation: %s\n", arp_pointer->sender_mac_address);
-  //              printf("\n");
-		arp_pointer = arp_pointer->next;
-        }
-
-}
 
 /*--------------------------------------------------------------------- 
  * Method:
@@ -198,26 +155,70 @@ void assignIPAddr(uint32_t* ipAddr, uint32_t info)
  *  Construct the ARP packet 
  *  pass the constructed ARP packet as buf in sr_send_packet()
  *----------------------------------------------------------------------*/
-ARPPACKET getSentARPPacket(struct arp_entry* entry, unsigned char* sender_mac_address_unsignchar, uint8_t* sender_mac_address_uint8_t)
+PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac_address_unsigned_char, uint32_t s_IP, uint32_t d_IP)
 {
-    ARPACKET arpPacket = 0;
+    PARPACKET arpPacket = (PARPACKET)malloc(sizeof(PARPACKET));
+
     assignBroadcastEthernetAddr(arpPacket->et_hdr->ether_dhost); 
+    assignSourceEthernetAddrFirst(arpPacket->et_hdr->ether_shost, s_mac_address_uint8_t); 
     arpPacket->et_hdr->ether_type = htons(2054); 
+ 
     arpPacket->arp_hdr->ar_hrd = htons(1);
     arpPacket->arp_hdr->ar_pro = htons(2048);
     arpPacket->arp_hdr->ar_hln = (unsigned char*)htons(6);
     arpPacket->arp_hdr->ar_pln = (unsigned char*)htons(4);
     arpPacket->arp_hdr->ar_op = htons(1);
+    assignSourceEthernetAddrSecond(arpPacket->arp_hdr->ar_sha, s_mac_address_unsignchar);
+    assignIpAddr(& arpPacket->arp_hdr->ar_sip, s_IP);
     assignDefaultTargetEthernetAdd(arpPacket->arp_hdr->artha);
-
-    //wait for wallace...........................
-    //.........................................
-    assignSourceEthernetAddrSecond(arpPacket->arp_hdr->ar_sha, sender_mac_address_unsignchar);
-    assignIpAddr(& arpPacket->arp_hdr->ar_sip, sender_ip_address);
-    assignSourceEthernetAddrFirst(arpPacket->et_hdr->ether_shost, sender_mac_address_uint8_t); 
-    assignIpAddr(& arpPacket->arp_hdr->ar_tip, target_ip_address);
+    assignIpAddr(& arpPacket->arp_hdr->ar_tip, d_IP);
     
-    //...................................................
-
     return arpPacket;
-} 
+}
+
+/*code to add an entry to the arp table */
+void add_arp_entry(arp_cache_entry *entry, arp_cache_entry *arp_cache){
+    assert(entry);
+    if(!arp_cache->ip_address){
+        arp_cache->ip_address = entry->ip_address;  
+        memcpy(arp_cache->mac_address_uint8_t, entry->mac_address_uint8_t, 6);
+        memcpy(arp_cache->mac_address_unsigned_char, entry->mac_address_unsigned_char, 6);
+        arp_cache->interface_type = entry->interface_type;
+        arp_cache->next = NULL;
+        return;
+    }
+    assert(arp_cache);
+
+    //search if entry already exists
+    arp_cache_entry *arp_pointer = arp_cache;
+    while(arp_pointer != NULL){
+        if (arp_pointer->ip_address ==  entry->ip_address){
+            //IP Address already exists in cache
+            //  			printf("IP Address exists is cache already\n");
+            return;
+        }
+        arp_pointer = arp_pointer->next;
+    }	
+
+    while(arp_pointer->next != NULL){
+        arp_pointer = arp_pointer->next;
+    }
+    arp_pointer->next = entry;
+}
+/*
+* method to pretty print arp table 
+void pretty_print_arp_table(arp_cache_entry *arp_cache){
+    arp_cache_entry *arp_pointer = arp_cache;
+    int i = 0;
+    //    printf("IP address: \n");
+    while(arp_pointer){
+        while (i < 4){
+            //			printf("%hx" , arp_pointer->ip_address[i]);
+            i++;
+        }
+        printf("Char representation: %s\n", arp_pointer->mac_address_uint8_t);
+        //              printf("\n");
+        arp_pointer = arp_pointer->next;
+    }
+}
+*/

@@ -71,12 +71,11 @@ struct sr_instance
 /* structure of arp entry node */
 struct arp_entry
 {
-	uint8_t *ip_address;
-        unsigned char sender_ip_address[6];
-	uint8_t *mac_address;
-        unsigned char sender_mac_address[6];
-	char *interface_type;
-	struct arp_entry *next;
+    uint32_t ip_address;
+    uint8_t mac_address_uint8_t[6];
+    unsigned char mac_address_unsigned_char[6];
+    char *interface_type;
+    struct arp_entry *next;
 };
 
 /*defining the arp table, which is a linked list of arp entries */
