@@ -85,7 +85,8 @@ void sr_handlepacket(struct sr_instance* sr,
         if( packet[12] == htons(8) && packet[13] == htons(6)){
             //		printf("Packet is of type arp\n");
             //1. get our machine IP and MAC
-
+            //IP: uint8_t us_IP[4]
+            //MAC: uint8_t us_MAC[6]
 
             //************if it is an ARP request******************
 	    //if broadcast, check destination ip and compare with local ip
