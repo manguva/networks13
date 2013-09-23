@@ -74,8 +74,8 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(packet);
     assert(interface);
 	
-    uint8_t *sender_mac_address = (uint8_t *)malloc(6 * sizeof(uint8_t));
-    uint8_t *sender_ip_address = (uint8_t *)malloc(sizeof(uint8_t) * 4);
+    uint8_t *server_mac_address = (uint8_t *)malloc(6 * sizeof(uint8_t));
+    uint8_t *server_ip_address = (uint8_t *)malloc(sizeof(uint8_t) * 4);
     arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
 //    printf("Received packet\n");
     int i = len;
@@ -105,13 +105,12 @@ void sr_handlepacket(struct sr_instance* sr,
     add_arp_entry(entry, &arp_table);
 
 //    pretty_print_arp_table(&arp_table);
-    /*retrieving arp packet information */
 
     printf("*** -> Received packet of length %d \n",len);
     //send the broadcasting ARP packet
     PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac_address_unsigned_char, uint32_t s_IP, uint32_t d_IP)
     
-    PARPPACKET buf = ()getSentARPPacket();
+    PARPPACKET buf = getSentARPPacket();
     sr_send_packet(sr, buf, 42, interface);
 
 }/* end sr_ForwardPacket */
