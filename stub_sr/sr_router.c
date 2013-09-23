@@ -221,3 +221,14 @@ void pretty_print_arp_table(arp_cache_entry *arp_cache){
     }
 }
 */
+
+int convert_ip_to_integer(uint8_t ip_address[]){
+        int mask = 0xFF;
+        int result = 0;
+        result = ip_address[0] & mask;
+        result += ((ip_address[1] & mask) << 8);
+        result += ((ip_address[2] & mask) << 16);
+        result += ((ip_address[3] & mask) << 24);
+    return result;
+}
+
