@@ -84,34 +84,17 @@ void sr_handlepacket(struct sr_instance* sr,
     if(i>15){
         if( packet[12] == htons(8) && packet[13] == htons(6)){
             //		printf("Packet is of type arp\n");
-            //retrieve mac address, and IP address of server
-            memcpy(server_mac_address, packet + 6, 6);
-            memcpy(server_ip_address, packet + 28, 4);
+            //1. get our machine IP and MAC
+
+
+            //************if it is an ARP request******************
+
+
+            //**********if it is an ARP reply*********************
+            
         }
     }
 
-    //Building the Arp cache entry
-    
-    //a function to convert value sender_ip_address to the ip_address format
-    //.......
-    entry->ip_address = server_ip_address;
-    //....
-    
-    memcpy(entry->mac_address_uint8_t, server_mac_address, 6);
-    memcpy(entry->mac_address_unsigned_char, server_mac_address, 6);
-    entry->interface_type = interface;
-    entry->next = NULL;
-
-    add_arp_entry(entry, &arp_table);
-
-//    pretty_print_arp_table(&arp_table);
-
-    printf("*** -> Received packet of length %d \n",len);
-    //send the broadcasting ARP packet
-    PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac_address_unsigned_char, uint32_t s_IP, uint32_t d_IP)
-    
-    PARPPACKET buf = getSentARPPacket();
-    sr_send_packet(sr, buf, 42, interface);
 
 }/* end sr_ForwardPacket */
 
@@ -121,6 +104,51 @@ void sr_handlepacket(struct sr_instance* sr,
  * Method:
  *
  *---------------------------------------------------------------------*/
+void dealWithARPReply(struct sr_instance* sr, 
+        uint8_t * packet/* lent */,
+        unsigned int len,
+        char* interface/* lent */)
+{
+    //Building the Arp cache entry
+    entry->ip_address = convert_ip_to_integer(server_ip_address);
+
+    memcpy(entry->mac_address_uint8_t, server_mac_address, 6);
+    memcpy(entry->mac_address_unsigned_char, server_mac_address, 6);
+    entry->interface_type = interface;
+    entry->next = NULL;
+
+    add_arp_entry(entry, &arp_table);
+
+    //    pretty_print_arp_table(&arp_table);
+
+    printf("*** -> Received packet of length %d \n",len);
+    //send the broadcasting ARP packet
+    PARPPACKET buf = getSentARPPacket();
+    sr_send_packet(sr, buf, 42, interface);
+
+
+
+
+
+
+
+    //retrieve mac address, and IP address of server
+    memcpy(server_mac_address, packet + 6, 6);
+    memcpy(server_ip_address, packet + 28, 4);
+
+}
+
+void dealWithARPRequest(struct sr_instance* sr, 
+        uint8_t * packet/* lent */,
+        unsigned int len,
+        char* interface/* lent */)
+{
+  
+}
+
+
+
+
 void assignBroadcastEthernetAddr(uint8_t* ether_dhost)
 {
     for(int i = 0; i < 6; i++)
@@ -222,9 +250,9 @@ void pretty_print_arp_table(arp_cache_entry *arp_cache){
 }
 */
 
-int convert_ip_to_integer(uint8_t ip_address[]){
+uint32_t convert_ip_to_integer(uint8_t ip_address[]){
         int mask = 0xFF;
-        int result = 0;
+        uint32_t result = 0;
         result = ip_address[0] & mask;
         result += ((ip_address[1] & mask) << 8);
         result += ((ip_address[2] & mask) << 16);
