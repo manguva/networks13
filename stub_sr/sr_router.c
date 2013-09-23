@@ -97,8 +97,8 @@ void sr_handlepacket(struct sr_instance* sr,
             //if the destination IP is the us_IP
             if(memcmp(us_IP, des_IP, 4) == 0)
             {
-                dealWithARPReply(& sr, & packet, & interface,
-                        & us_IP, & us_MAC);
+                dealWithARPReply(sr, packet, interface, entry,
+                        us_IP, us_MAC);
             }
 
         //
@@ -117,7 +117,8 @@ void sr_handlepacket(struct sr_instance* sr,
  *---------------------------------------------------------------------*/
 void dealWithARPReply(struct sr_instance* sr, 
         uint8_t * packet/* lent */,
-        char* interface/* lent */
+        char* interface/* lent */,
+        struct arp_cache_entry* entry,       
         uint8_t* us_IP,
         uint8_t* us_MAC)
 {
@@ -126,7 +127,7 @@ void dealWithARPReply(struct sr_instance* sr,
     uint8_t* sender_IP = (uint8_t* )malloc(sizeof(uint8_t) * 4);
     memcpy(sender_IP, packet + 28, 4);
     //Building the Arp cache entry
-    entry->ip_address = convert_ip_to_integer(& sender_IP);
+    entry->ip_address = convert_ip_to_integer(sender_IP);
     
     uint8_t* sender_MAC = (uint8_t* )malloc(sizeof(uint8_t) * 6);
     memcpy(sender_MAC, packet + 6, 4);
@@ -138,12 +139,12 @@ void dealWithARPReply(struct sr_instance* sr,
     
     unsigned char* us_MAC_unsigned_char = (unsigned char*) malloc(sizeof(unsigned char) * 6);
     memcpy(us_MAC_unsigned_char, us_MAC, 6);
-    PARPPACKET buf = getSentARPPacket(& us_MAC, 
-            & us_MAC_unsigned_char,
-            convert_ip_to_interger(& us_IP),
+    PARPPACKET buf = getSentARPPacket(us_MAC, 
+            us_MAC_unsigned_char,
+            convert_ip_to_interger(us_IP),
             entry->ip_address);
 
-    sr_send_packet(& sr,& buf, 42, interface);
+    sr_send_packet(sr, buf, 42, interface);
 
 }
 
