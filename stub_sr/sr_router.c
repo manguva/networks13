@@ -88,7 +88,8 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
             //************if it is an ARP request******************
-
+	    //if broadcast, check destination ip and compare with local ip
+	    //if yes, construct arp reply to sender
 
             //**********if it is an ARP reply*********************
             
