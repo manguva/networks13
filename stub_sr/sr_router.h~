@@ -98,7 +98,7 @@ void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 void add_arp_entry(arp_cache_entry *, arp_cache_entry *);
 void pretty_print_arp_table(arp_cache_entry *);
 char [] retrieve_ip_address();
-char [] retrieve_mac_address();
+
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );
 void sr_set_ether_ip(struct sr_instance* , uint32_t );

@@ -79,7 +79,7 @@ void sr_handlepacket(struct sr_instance* sr,
     arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
 //    printf("Received packet\n");
     int i = len;
-    char src[6];
+
     /*retrieving arp packet information */
     if(i>15){
         if( packet[12] == htons(8) && packet[13] == htons(6)){
@@ -91,11 +91,8 @@ void sr_handlepacket(struct sr_instance* sr,
             //************if it is an ARP request******************
 	    //if broadcast, check destination ip and compare with local ip
 	    //if yes, construct arp reply to sender
- 	    if(!memcmp(packet, bytes, 6)){
-		if(!memcmp(packet + 38, retrieve_ip_address(), 4)){
-			memcpy(src, packet+6, 6);		
-			sr_send_packet(sr, src, 42, interface);
-		}
+ 	    if(memcmp(packet, bytes, 6)){
+		//return
 	    }
 
             //**********if it is an ARP reply*********************
@@ -269,55 +266,18 @@ uint32_t convert_ip_to_integer(uint8_t ip_address[]){
 }
 
 char [] retrieve_ip_address(){
-                  
-
-}
-
-
-char [] retrieve_mac_address(){
-	int fd;
-    struct ifreq ifr;
-    char *iface = "eth0";
-    unsigned char *mac;
-
-    fd = socket(AF_INET, SOCK_DGRAM, 0);
-
-    ifr.ifr_addr.sa_family = AF_INET;
-    strncpy(ifr.ifr_name , iface , IFNAMSIZ-1);
-
-    ioctl(fd, SIOCGIFHWADDR, &ifr);
-
-    close(fd);
-
-    mac = (unsigned char *)ifr.ifr_hwaddr.sa_data;
-
-    //display mac address
-    printf("Mac : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n" , mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    char address [6];
-    memcpy(address, mac, 6);
-    return address;
-
-}
-
-uint8_t [] retrieve_ip_address(){
-
-    struct ifaddrs *myaddrs, *ifa;
+	struct ifaddrs *myaddrs, *ifa;
     void *in_addr;
     char buf[64];
-    char ip[15];
-    char ip_copy[15];
-    char temp[3], temp_copy[3], l_copy[1], l2_copy[2];
-    uint8_t num[4];
 
     if(getifaddrs(&myaddrs) != 0)
     {
         perror("getifaddrs");
         exit(1);
     }
-    int i = 0;
+
     for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
     {
-
         if (ifa->ifa_addr == NULL)
             continue;
         if (!(ifa->ifa_flags & IFF_UP))
@@ -342,7 +302,8 @@ uint8_t [] retrieve_ip_address(){
             default:
                 continue;
         }
-if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
+
+        if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
         {
             printf("%s: inet_ntop failed!\n", ifa->ifa_name);
         }
@@ -350,65 +311,9 @@ if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
         {
             printf("%s: %s\n", ifa->ifa_name, buf);
         }
-        if (i == 1){
-                memcpy(ip, buf, 15);
-                int j = 0, k = 0, l = 0, g = 0;
-                while (ip[j] <= 57 && ip[j] > 45 ){
-                        if (ip[j] != 46){
-                                ip_copy[k++] = ip[j++];
-                                temp[l++] = ip_copy[k-1];
-                        }
-                        else {
-                                j++;
-                                if ( l == 1){
-                                        memcpy(l_copy, temp+2, 1);
-                                        num[g++] = (uint8_t)atoi(l_copy);
-                                        printf("l_copy: %s, temp+2: %s\n", l_copy, temp+2);
-                                }
-                                else if (l == 2) {
-                                        temp[2] = '\0';
-                                        memcpy(l2_copy, temp, 2);
-                                        num[g++] = (uint8_t)atoi(l2_copy);
-                                        printf("l2_copy: %s, temp+2: %s\n", l2_copy, temp+1);
-                                }
-                                else {
-                                        memcpy(temp_copy, temp, l);
-                                        num[g++] = (uint8_t)atoi(temp_copy);
-                                }
-                                l = 0;
-                        }
-                }
-                if ( l == 1){
-                                        memset(temp_copy, 0, 3);
-                                        memcpy(temp_copy+1, temp, 2);
-                                        num[g++] = (uint8_t)atoi(temp_copy);
-                }
-                else if (l == 2) {
-                                        temp[2] = '\0';
-                                        memcpy(l2_copy, temp, 2);
-                                        num[g++] = (uint8_t)atoi(l2_copy);
-
-                      }
-
-                else {
-                           memcpy(temp_copy, temp, l);
-                           num[g++] = (uint8_t)atoi(temp_copy);
-                }
-                j = 0;
-                printf("Value of j after all: ");
-                while(j < g){
-                        printf("\t%d, copy: %s", num[j++], temp_copy);
-                }
-                memset(temp, 0, 3);
-                ip_copy[k] = '\0';
-                printf("\nAfter memcpy: %s, ip_copy: %s\n", ip, ip_copy);
-                printf("The size of resultant array = %lu %d\n", sizeof(ip), j);
-        }
-        i++;
     }
 
     freeifaddrs(myaddrs);
-    return num;
+    return buf;
+
 }
-
-
