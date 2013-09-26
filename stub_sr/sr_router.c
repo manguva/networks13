@@ -29,6 +29,22 @@
 #endif
 
 arp_cache_entry arp_table;
+
+/********function declaration***********/
+void dealWithARPRequest();
+void dealWithARPReply();
+PARPPACKET constructReplyARPPacket();
+PARPPACKET constructBroadcastARPPacket();
+
+
+
+
+
+
+
+
+
+
 /*--------------------------------------------------------------------- 
  * Method: sr_init(void)
  * Scope:  Global
@@ -114,6 +130,56 @@ void sr_handlepacket(struct sr_instance* sr,
 
 		}
 	}
+    /* REQUIRES */
+    assert(sr);
+    assert(packet);
+    assert(interface);
+
+    arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
+    //    printf("Received packet\n");
+    int i = len;
+    /*retrieving arp packet information */
+    if(i > 15){
+        if( packet[12] == 8 && packet[13] == 6){
+            //printf("Packet is of type arp\n");
+            //1. get our machine IP and MAC
+            //IP: uint8_t* us_IP: length 4
+            //MAC: uint8_t* us_MAC: length 6
+            char mac_address[6];
+            uint8_t* us_MAC = (uint8_t *)retrieve_mac_address(mac_address);
+            uint8_t ip_address[4];
+            uint8_t* us_IP = retrieve_ip_address(ip_address); 
+
+            uint8_t bytes [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+            //************if it is an ARP request******************
+            //if broadcast, check destination ip and compare with local ip
+            //if yes, construct arp reply to sender
+            if(!memcmp(packet, bytes, 6)){
+                if(!memcmp(packet + 38, retrieve_ip_address(), 4)){
+                    //construct reply ARP packet
+                    dealWithARPRequest(sr, packet, interface, entry, us_IP, us_MAC);                   
+                }
+            }
+            else
+            {  
+                //if broadcast, check destination ip and compare with local ip
+                //if yes, construct arp reply to sender
+
+
+                //**********if it is an ARP reply**********************
+                uint8_t* des_IP = (uint8_t *) malloc (sizeof(uint8_t) * 4);
+                memcpy(des_IP, packet + 38, 4);
+                //if the destination IP is the us_IP
+                if(memcmp(us_IP, des_IP, 4) == 0)
+                {
+                    dealWithARPReply(sr, packet, interface, entry,
+                            us_IP, us_MAC);
+                }
+
+            }
+
+        }
+    }
 
 
 }/* end sr_ForwardPacket */
@@ -124,6 +190,48 @@ void sr_handlepacket(struct sr_instance* sr,
  * Method:
  *
  *---------------------------------------------------------------------*/
+void dealWithARPRequest(struct sr_instance* sr, 
+        uint8_t * packet/* lent */,
+        char* interface,
+        arp_cache_entry* entry,
+        uint8_t* us_IP,
+        uint8_t* us_MAC)
+{
+    //update the ARP cache table
+    //get the IP and MAC of sender
+    uint8_t* sender_IP = (uint8_t* )malloc(sizeof(uint8_t) * 4);
+    memcpy(sender_IP, packet + 28, 4);
+    //Building the Arp cache entry
+    entry->ip_address = convert_ip_to_integer(sender_IP);
+
+    uint8_t* sender_MAC = (uint8_t* )malloc(sizeof(uint8_t) * 6);
+    memcpy(sender_MAC, packet + 6, 4);
+    memcpy(entry->mac_address_uint8_t, sender_MAC, 6);
+    memcpy(entry->mac_address_unsigned_char, sender_MAC, 6);
+    entry->interface_type = interface;
+    entry->next = NULL;
+    add_arp_entry(entry, &arp_table);
+
+    //construct the ARP reply packet
+    uint8_t* dest_mac_address_uint8_t = (uint8_t *)malloc(sizeof(uint8_t) * 6);
+    memcpy(dest_mac_address_uint8_t, packet + 6, 6);
+    unsigned char* dest_mac_address_unsigned_char = (unsigned char *)malloc(sizeof(unsigned char) * 6);
+    memcpy(dest_mac_address_unsigned_char, packet + 6, 6);
+    unsigned char* us_MAC_unsigned_char = (unsigned char*)malloc(sizeof(unsigned char));
+    memcpy(us_MAC_unsigned_char, us_MAC, 6); 
+    uint32_t* dest_IP_temp = (uint32_t* )malloc(sizeof(uint32_t));
+    uint32_t dest_IP = (*dest_IP_temp);
+
+    PARPPACKET buf = constructReplyARPPacket(dest_mac_address_uint8_t,
+            dest_mac_address_unsigned_char,
+            us_MAC,
+            us_MAC_unsigned_char,
+            dest_IP,
+            us_IP);
+    
+    sr_send_packet(sr,(uint8_t* )buf, 42, interface);
+}
+
 void dealWithARPReply(struct sr_instance* sr, 
 		uint8_t * packet/* lent */,
 		char* interface/* lent */,
@@ -172,12 +280,45 @@ void assignBroadcastEthernetAddr(uint8_t* ether_dhost)
 {
 	for(int i = 0; i < 6; i++)
 		ether_dhost[i] = htons(255);    
+    /* update the ARP cache table  */
+    //get the IP and MAC of sender
+    uint8_t* sender_IP = (uint8_t* )malloc(sizeof(uint8_t) * 4);
+    memcpy(sender_IP, packet + 28, 4);
+    //Building the Arp cache entry
+    entry->ip_address = convert_ip_to_integer(sender_IP);
+    
+    uint8_t* sender_MAC = (uint8_t* )malloc(sizeof(uint8_t) * 6);
+    memcpy(sender_MAC, packet + 6, 4);
+    memcpy(entry->mac_address_uint8_t, sender_MAC, 6);
+    memcpy(entry->mac_address_unsigned_char, sender_MAC, 6);
+    entry->interface_type = interface;
+    entry->next = NULL;
+    add_arp_entry(entry, &arp_table);
+    
+    unsigned char* us_MAC_unsigned_char = (unsigned char*)malloc(sizeof(unsigned char) * 6);
+    memcpy(us_MAC_unsigned_char, us_MAC, 6);
+    PARPPACKET buf = constructBroadcastARPPacket(us_MAC, 
+            us_MAC_unsigned_char,
+            convert_ip_to_integer(us_IP),
+            entry->ip_address);
+
+    sr_send_packet(sr, (uint8_t*)buf, 42, interface);
+
+}
+
+void assignBroadcastEthernetAddr(uint8_t* ether_dhost)
+{
+    uint8_t temp = 255;
+    for(int i = 0; i < 6; i++)
+        ether_dhost[i] = temp;    
 }
 
 void assignDefaultTargetEthernetAddr(unsigned char* ar_tha)
 {
 	for(int i = 0; i < 6; i++)
 		ar_tha[i] = htons(0);    
+    for(int i = 0; i < 6; i++)
+        ar_tha[i] = 0;    
 }
 
 void assignSourceEthernetAddrFirst(uint8_t* ether_shost, uint8_t* info)
@@ -191,17 +332,37 @@ void assignSourceEthernetAddrSecond(unsigned char* ar_sha, unsigned char* info)
 	for(int i = 0; i < 6; i++)
 		ar_sha[i] = info[i];
 }
-
-void assignIPAddr(uint32_t* ipAddr, uint32_t info)
+/*----------------------------------------------------------------------
+ *  Construct the Broadcast ARP packet 
+ *  pass the constructed ARP packet as buf in sr_send_packet()
+ *----------------------------------------------------------------------*/
+PARPPACKET constructBroadcastARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac_address_unsigned_char, uint32_t s_IP, uint32_t d_IP)
 {
 	ipAddr = info;
+    PARPPACKET arpPacket = (PARPPACKET)malloc(sizeof(ARPPACKET));
+
+    assignBroadcastEthernetAddr(arpPacket->et_hdr.ether_dhost); 
+    assignSourceEthernetAddrFirst(arpPacket->et_hdr.ether_shost, s_mac_address_uint8_t); 
+    arpPacket->et_hdr.ether_type = htons(2054); 
+ 
+    arpPacket->arp_hdr.ar_hrd = htons(1);
+    arpPacket->arp_hdr.ar_pro = htons(2048);
+    arpPacket->arp_hdr.ar_hln = 6;
+    arpPacket->arp_hdr.ar_pln = 4;
+    arpPacket->arp_hdr.ar_op = htons(1);
+    assignSourceEthernetAddrSecond(arpPacket->arp_hdr.ar_sha, s_mac_address_unsigned_char);
+    arpPacket->arp_hdr.ar_sip = s_IP;
+    assignDefaultTargetEthernetAddr(arpPacket->arp_hdr.ar_tha);
+    arpPacket->arp_hdr.ar_tip = d_IP;
+    
+    return arpPacket;
 }
 
 /*----------------------------------------------------------------------
- *  Construct the ARP packet 
+ *  Construct the Reply ARP packet 
  *  pass the constructed ARP packet as buf in sr_send_packet()
  *----------------------------------------------------------------------*/
-PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac_address_unsigned_char, uint32_t s_IP, uint32_t d_IP)
+PARPPACKET constructReplyARPPacket(uint8_t* dest_mac_address_uint8_t, unsigned char* dest_mac_address_unsigned_char, uint8_t* source_mac_address_uint8_t, unsigned char* source_mac_address_unsigned_char, uint32_t dest_IP, uint32_t source_IP)
 {
 	PARPACKET arpPacket = (PARPACKET)malloc(sizeof(ARPACKET));
 
@@ -220,8 +381,24 @@ PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac
 	assignIpAddr(& arpPacket->arp_hdr->ar_tip, d_IP);
 
 	return arpPacket;
-}
+    PARPPACKET arpPacket = (PARPPACKET)malloc(sizeof(ARPPACKET));
 
+    memcpy(arpPacket->et_hdr.ether_dhost, dest_mac_address_uint8_t, 6);
+    memcpy(arpPacket->et_hdr.ether_shost, source_mac_address_uint8_t, 6); 
+    arpPacket->et_hdr.ether_type = htons(2054); 
+ 
+    arpPacket->arp_hdr.ar_hrd = htons(1);
+    arpPacket->arp_hdr.ar_pro = htons(2048);
+    arpPacket->arp_hdr.ar_hln = 6;
+    arpPacket->arp_hdr.ar_pln = 4;
+    arpPacket->arp_hdr.ar_op = htons(1);
+    memcpy(arpPacket->arp_hdr.ar_sha, source_mac_address_unsigned_char, 6);
+    arpPacket->arp_hdr.ar_sip = source_IP;
+    memcpy(arpPacket->arp_hdr.ar_tha, dest_mac_address_unsigned_char, 6);
+    arpPacket->arp_hdr.ar_tip =  dest_IP;
+    
+    return arpPacket;
+}
 /*code to add an entry to the arp table */
 void add_arp_entry(arp_cache_entry *entry, arp_cache_entry *arp_cache){
 	assert(entry);
