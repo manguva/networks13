@@ -12,13 +12,7 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <ifaddrs.h>
-#include <sys/ioctl.h>
-#include <unistd.h>   //close
+
 #include "sr_protocol.h"
 #ifdef VNL
 #include "vnlconn.h"
@@ -103,9 +97,7 @@ void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 void add_arp_entry(arp_cache_entry *, arp_cache_entry *);
 void pretty_print_arp_table(arp_cache_entry *);
-const uint8_t * retrieve_ip_address();
-const char * retrieve_mac_address();
-uint32_t convert_ip_to_integer(uint8_t ip_address[]);
+char [] retrieve_ip_address();
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );
