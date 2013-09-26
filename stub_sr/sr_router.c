@@ -80,7 +80,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
     /*retrieving arp packet information */
     if(i>15){
-        if( packet[12] == htons(8) && packet[13] == htons(6)){
+        if( packet[12] == 8 && packet[13] == 6){
             //		printf("Packet is of type arp\n");
             //1. get our machine IP and MAC
             //IP: uint8_t us_IP[4]
@@ -162,13 +162,13 @@ void dealWithARPRequest(struct sr_instance* sr,
 void assignBroadcastEthernetAddr(uint8_t* ether_dhost)
 {
     for(int i = 0; i < 6; i++)
-        ether_dhost[i] = htons(255);    
+        ether_dhost[i] = 255;    
 }
 
 void assignDefaultTargetEthernetAddr(unsigned char* ar_tha)
 {
     for(int i = 0; i < 6; i++)
-        ar_tha[i] = htons(0);    
+        ar_tha[i] = 0;    
 }
 
 void assignSourceEthernetAddrFirst(uint8_t* ether_shost, uint8_t* info)
@@ -202,8 +202,8 @@ PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac
  
     arpPacket->arp_hdr->ar_hrd = htons(1);
     arpPacket->arp_hdr->ar_pro = htons(2048);
-    arpPacket->arp_hdr->ar_hln = (unsigned char*)htons(6);
-    arpPacket->arp_hdr->ar_pln = (unsigned char*)htons(4);
+    arpPacket->arp_hdr->ar_hln = 6;
+    arpPacket->arp_hdr->ar_pln = 4;
     arpPacket->arp_hdr->ar_op = htons(1);
     assignSourceEthernetAddrSecond(arpPacket->arp_hdr->ar_sha, s_mac_address_unsignchar);
     assignIpAddr(& arpPacket->arp_hdr->ar_sip, s_IP);
