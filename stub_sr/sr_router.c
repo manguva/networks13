@@ -74,12 +74,10 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(packet);
     assert(interface);
 	
-    uint8_t *server_mac_address = (uint8_t *)malloc(6 * sizeof(uint8_t));
-    uint8_t *server_ip_address = (uint8_t *)malloc(sizeof(uint8_t) * 4);
     arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
 //    printf("Received packet\n");
     int i = len;
-    char src[6];
+    uint8_t src[6];
     /*retrieving arp packet information */
     if(i>15){
         if( packet[12] == htons(8) && packet[13] == htons(6)){
@@ -98,8 +96,22 @@ void sr_handlepacket(struct sr_instance* sr,
 		}
 	    }
 
-            //**********if it is an ARP reply*********************
-            
+            //if broadcast, check destination ip and compare with local ip
+            //if yes, construct arp reply to sender
+
+
+            //**********if it is an ARP reply**********************
+            uint8_t* des_IP = (uint8_t *) malloc (sizeof(uint8_t) * 4);
+            memcpy(des_IP, packet + 38, 4);
+            //if the destination IP is the us_IP
+            if(memcmp(us_IP, des_IP, 4) == 0)
+            {
+                dealWithARPReply(sr, packet, interface, entry,
+                        us_IP, us_MAC);
+            }
+
+        //
+
         }
     }
 
@@ -114,35 +126,34 @@ void sr_handlepacket(struct sr_instance* sr,
  *---------------------------------------------------------------------*/
 void dealWithARPReply(struct sr_instance* sr, 
         uint8_t * packet/* lent */,
-        unsigned int len,
-        char* interface/* lent */)
+        char* interface/* lent */,
+        arp_cache_entry* entry,       
+        uint8_t* us_IP,
+        uint8_t* us_MAC)
 {
+    /* update the ARP cache table  */
+    //get the IP and MAC of sender
+    uint8_t* sender_IP = (uint8_t* )malloc(sizeof(uint8_t) * 4);
+    memcpy(sender_IP, packet + 28, 4);
     //Building the Arp cache entry
-    entry->ip_address = convert_ip_to_integer(server_ip_address);
-
-    memcpy(entry->mac_address_uint8_t, server_mac_address, 6);
-    memcpy(entry->mac_address_unsigned_char, server_mac_address, 6);
+    entry->ip_address = convert_ip_to_integer(sender_IP);
+    
+    uint8_t* sender_MAC = (uint8_t* )malloc(sizeof(uint8_t) * 6);
+    memcpy(sender_MAC, packet + 6, 4);
+    memcpy(entry->mac_address_uint8_t, sender_MAC, 6);
+    memcpy(entry->mac_address_unsigned_char, sender_MAC, 6);
     entry->interface_type = interface;
     entry->next = NULL;
-
     add_arp_entry(entry, &arp_table);
+    
+    unsigned char* us_MAC_unsigned_char = (unsigned char*) malloc(sizeof(unsigned char) * 6);
+    memcpy(us_MAC_unsigned_char, us_MAC, 6);
+    PARPPACKET buf = getSentARPPacket(us_MAC, 
+            us_MAC_unsigned_char,
+            convert_ip_to_integer(us_IP),
+            entry->ip_address);
 
-    //    pretty_print_arp_table(&arp_table);
-
-    printf("*** -> Received packet of length %d \n",len);
-    //send the broadcasting ARP packet
-    PARPPACKET buf = getSentARPPacket();
     sr_send_packet(sr, buf, 42, interface);
-
-
-
-
-
-
-
-    //retrieve mac address, and IP address of server
-    memcpy(server_mac_address, packet + 6, 6);
-    memcpy(server_ip_address, packet + 28, 4);
 
 }
 
@@ -192,7 +203,7 @@ void assignIPAddr(uint32_t* ipAddr, uint32_t info)
  *----------------------------------------------------------------------*/
 PARPPACKET getSentARPPacket(uint8_t* s_mac_address_uint8_t, unsigned char* s_mac_address_unsigned_char, uint32_t s_IP, uint32_t d_IP)
 {
-    PARPACKET arpPacket = (PARPACKET)malloc(sizeof(PARPACKET));
+    PARPACKET arpPacket = (PARPACKET)malloc(sizeof(ARPACKET));
 
     assignBroadcastEthernetAddr(arpPacket->et_hdr->ether_dhost); 
     assignSourceEthernetAddrFirst(arpPacket->et_hdr->ether_shost, s_mac_address_uint8_t); 
@@ -268,13 +279,7 @@ uint32_t convert_ip_to_integer(uint8_t ip_address[]){
     return result;
 }
 
-char [] retrieve_ip_address(){
-                  
-
-}
-
-
-char [] retrieve_mac_address(){
+const char* retrieve_mac_address(char address []){
 	int fd;
     struct ifreq ifr;
     char *iface = "eth0";
@@ -293,13 +298,12 @@ char [] retrieve_mac_address(){
 
     //display mac address
     printf("Mac : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n" , mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    char address [6];
     memcpy(address, mac, 6);
     return address;
 
 }
 
-uint8_t [] retrieve_ip_address(){
+const uint8_t* retrieve_ip_address(uint8_t num[]){
 
     struct ifaddrs *myaddrs, *ifa;
     void *in_addr;
@@ -307,7 +311,6 @@ uint8_t [] retrieve_ip_address(){
     char ip[15];
     char ip_copy[15];
     char temp[3], temp_copy[3], l_copy[1], l2_copy[2];
-    uint8_t num[4];
 
     if(getifaddrs(&myaddrs) != 0)
     {
