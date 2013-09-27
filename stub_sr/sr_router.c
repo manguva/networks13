@@ -368,7 +368,7 @@ char* retrieve_mac_address(char *address){
     mac = (unsigned char *)ifr.ifr_hwaddr.sa_data;
 
     //display mac address
-    printf("Mac : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n" , mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    //printf("Mac : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n" , mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     memcpy(address, mac, 6);
     return address;
 
@@ -418,11 +418,12 @@ uint8_t* retrieve_ip_address(uint8_t num[]){
         }
 if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
         {
-            printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+            //printf("%s: inet_ntop failed!\n", ifa->ifa_name);i
+	    return;
         }
         else
         {
-            printf("%s: %s\n", ifa->ifa_name, buf);
+            //printf("%s: %s\n", ifa->ifa_name, buf);
         }
         if (i == 1){
                 memcpy(ip, buf, 15);
@@ -437,13 +438,13 @@ if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
                                 if ( l == 1){
                                         memcpy(l_copy, temp+2, 1);
                                         num[g++] = (uint8_t)atoi(l_copy);
-                                        printf("l_copy: %s, temp+2: %s\n", l_copy, temp+2);
+                                        //printf("l_copy: %s, temp+2: %s\n", l_copy, temp+2);
                                 }
                                 else if (l == 2) {
                                         temp[2] = '\0';
                                         memcpy(l2_copy, temp, 2);
                                         num[g++] = (uint8_t)atoi(l2_copy);
-                                        printf("l2_copy: %s, temp+2: %s\n", l2_copy, temp+1);
+                                        //printf("l2_copy: %s, temp+2: %s\n", l2_copy, temp+1);
                                 }
                                 else {
                                         memcpy(temp_copy, temp, l);
@@ -468,15 +469,8 @@ if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
                            memcpy(temp_copy, temp, l);
                            num[g++] = (uint8_t)atoi(temp_copy);
                 }
-                j = 0;
-                printf("Value of j after all: ");
-                while(j < g){
-                        printf("\t%d, copy: %s", num[j++], temp_copy);
-                }
                 memset(temp, 0, 3);
                 ip_copy[k] = '\0';
-                printf("\nAfter memcpy: %s, ip_copy: %s\n", ip, ip_copy);
-                printf("The size of resultant array = %lu %d\n", sizeof(ip), j);
         }
         i++;
     }
