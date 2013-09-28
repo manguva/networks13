@@ -78,6 +78,7 @@ struct sr_instance
 struct arp_entry
 {
     uint32_t ip_address;
+    uint8_t ip[4];
     uint8_t mac_address_uint8_t[6];
     unsigned char mac_address_unsigned_char[6];
     char *interface_type;

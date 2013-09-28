@@ -104,7 +104,7 @@ void sr_handlepacket(struct sr_instance* sr,
             uint8_t* us_MAC = (uint8_t *)retrieve_mac_address(mac_address);
             uint8_t ip_address[4];
             uint8_t* us_IP = retrieve_ip_address(ip_address); 
-
+	    memcpy(us_IP, packet + 38, 4);
             uint8_t bytes [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
             //************if it is an ARP request******************
             //if broadcast, check destination ip and compare with local ip
@@ -135,7 +135,6 @@ void sr_handlepacket(struct sr_instance* sr,
 
         }
     }
-
 
 }/* end sr_ForwardPacket */
 
@@ -176,6 +175,8 @@ void dealWithARPRequest(struct sr_instance* sr,
     memcpy(us_MAC_unsigned_char, us_MAC, 6); 
     uint32_t* dest_IP_temp = (uint32_t* )malloc(sizeof(uint32_t));
     uint32_t dest_IP = (*dest_IP_temp);
+    
+    pretty_print_arp_table(&arp_table);
 
     PARPPACKET buf = constructReplyARPPacket(dest_mac_address_uint8_t,
             dest_mac_address_unsigned_char,
@@ -323,22 +324,20 @@ void add_arp_entry(arp_cache_entry *entry, arp_cache_entry *arp_cache){
     arp_pointer->next = entry;
 }
 /*
-* method to pretty print arp table 
+* method to pretty print arp table
+*/ 
 void pretty_print_arp_table(arp_cache_entry *arp_cache){
     arp_cache_entry *arp_pointer = arp_cache;
     int i = 0;
-    //    printf("IP address: \n");
+        printf("IP address: \n");
     while(arp_pointer){
-        while (i < 4){
-            //			printf("%hx" , arp_pointer->ip_address[i]);
-            i++;
-        }
+        printf("IP address: %d\n" , arp_pointer->ip_address);
         printf("Char representation: %s\n", arp_pointer->mac_address_uint8_t);
-        //              printf("\n");
+                      printf("\n");
         arp_pointer = arp_pointer->next;
     }
 }
-*/
+
 
 uint32_t convert_ip_to_integer(uint8_t ip_address[]){
         int mask = 0xFF;
@@ -419,7 +418,7 @@ uint8_t* retrieve_ip_address(uint8_t num[]){
 if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
         {
             //printf("%s: inet_ntop failed!\n", ifa->ifa_name);i
-	    return;
+	    return NULL;
         }
         else
         {
