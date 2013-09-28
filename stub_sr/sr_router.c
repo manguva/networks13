@@ -95,45 +95,40 @@ void sr_handlepacket(struct sr_instance* sr,
     int i = len;
     /*retrieving arp packet information */
     if(i > 15){
-        if( packet[12] == 8 && packet[13] == 6){
-            //printf("Packet is of type arp\n");
-            //1. get our machine IP and MAC
-            //IP: uint8_t* us_IP: length 4
-            //MAC: uint8_t* us_MAC: length 6
-            char mac_address[6];
-            uint8_t* us_MAC = (uint8_t *)retrieve_mac_address(mac_address);
-            uint8_t ip_address[4];
-            uint8_t* us_IP = retrieve_ip_address(ip_address); 
-	    memcpy(us_IP, packet + 38, 4);
-            uint8_t bytes [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-            //************if it is an ARP request******************
-            //if broadcast, check destination ip and compare with local ip
-            //if yes, construct arp reply to sender
-            if(!memcmp(packet, bytes, 6)){
-                if(!memcmp(packet + 38, us_IP, 4)){
-                    //construct reply ARP packet
-                    dealWithARPRequest(sr, packet, interface, entry, us_IP, us_MAC);                   
-                }
-            }
-            else
-            {  
-                //if broadcast, check destination ip and compare with local ip
-                //if yes, construct arp reply to sender
+	    if( packet[12] == 8 && packet[13] == 6){
+		    //printf("Packet is of type arp\n");
+		    //1. get our machine IP and MAC
+		    //IP: uint8_t* us_IP: length 4
+		    //MAC: uint8_t* us_MAC: length 6
+		    unsigned char* us_MAC = retrieve_mac_address(sr, interface);
+		    uint8_t* us_IP = retrieve_ip_address(sr, interface); 
+		    uint8_t bytes [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+		    //************if it is an ARP request******************/
+		    //if broadcast, check destination ip and compare with local ip
+		    //if yes, construct arp reply to sender
+		    if(!memcmp(packet, bytes, 6)){
+			    if(!memcmp(packet + 38, us_IP, 4)){
+				    //construct reply ARP packet
+				    dealWithARPRequest(sr, packet, interface, entry, us_IP, us_MAC);                   
+				    printf("complete ARP request\n");
+			    }
+		    }
+		    else
+		    {  
+			    //**********if it is an ARP reply**********************/
+			    uint8_t* des_IP = (uint8_t *) malloc (sizeof(uint8_t) * 4);
+			    memcpy(des_IP, packet + 38, 4);
+			    //if the destination IP is the us_IP
+			    if(memcmp(us_IP, des_IP, 4) == 0)
+			    {
+				    dealWithARPReply(sr, packet, interface, entry,
+						    us_IP, us_MAC);
+				    printf("complete ARP reply\n");
+			    }
 
+		    }
 
-                //**********if it is an ARP reply**********************
-                uint8_t* des_IP = (uint8_t *) malloc (sizeof(uint8_t) * 4);
-                memcpy(des_IP, packet + 38, 4);
-                //if the destination IP is the us_IP
-                if(memcmp(us_IP, des_IP, 4) == 0)
-                {
-                    dealWithARPReply(sr, packet, interface, entry,
-                            us_IP, us_MAC);
-                }
-
-            }
-
-        }
+	    }
     }
 
 }/* end sr_ForwardPacket */
@@ -176,8 +171,6 @@ void dealWithARPRequest(struct sr_instance* sr,
     uint32_t* dest_IP_temp = (uint32_t* )malloc(sizeof(uint32_t));
     uint32_t dest_IP = (*dest_IP_temp);
     
-    pretty_print_arp_table(&arp_table);
-
     PARPPACKET buf = constructReplyARPPacket(dest_mac_address_uint8_t,
             dest_mac_address_unsigned_char,
             us_MAC,
@@ -325,7 +318,7 @@ void add_arp_entry(arp_cache_entry *entry, arp_cache_entry *arp_cache){
 }
 /*
 * method to pretty print arp table
-*/ 
+ 
 void pretty_print_arp_table(arp_cache_entry *arp_cache){
     arp_cache_entry *arp_pointer = arp_cache;
     int i = 0;
@@ -337,7 +330,7 @@ void pretty_print_arp_table(arp_cache_entry *arp_cache){
         arp_pointer = arp_pointer->next;
     }
 }
-
+*/
 
 uint32_t convert_ip_to_integer(uint8_t ip_address[]){
         int mask = 0xFF;
@@ -346,136 +339,54 @@ uint32_t convert_ip_to_integer(uint8_t ip_address[]){
         result += ((ip_address[1] & mask) << 8);
         result += ((ip_address[2] & mask) << 16);
         result += ((ip_address[3] & mask) << 24);
-    return result;
+	return result;
 }
 
-char* retrieve_mac_address(char *address){
-	int fd;
-    struct ifreq ifr;
-    char *iface = "eth0";
-    unsigned char *mac;
+unsigned char* retrieve_mac_address(struct sr_instance* sr, char* interface)
+{	
+	struct sr_if* if_walker = 0;
+	if(sr->if_list == 0)
+	{
+		printf("Interface list empty \n");
+		return NULL;
+	}
+	if_walker = sr->if_list;
 
-    fd = socket(AF_INET, SOCK_DGRAM, 0);
+	unsigned char* mac = (unsigned char*)malloc(sizeof(unsigned char) * 6);
 
-    ifr.ifr_addr.sa_family = AF_INET;
-    strncpy(ifr.ifr_name , iface , IFNAMSIZ-1);
+	while(if_walker)
+	{
+		if(!strncmp(if_walker->name, interface, 6))
+		{
+			memcpy(mac, if_walker->addr, 6);
+		}
+		if_walker= if_walker->next;	
+	}
+	return mac;
+}	
 
-    ioctl(fd, SIOCGIFHWADDR, &ifr);
+uint8_t* retrieve_ip_address(struct sr_instance* sr, char* interface){
+	struct sr_if* if_walker = 0;
+	if(sr->if_list == 0)
+	{
+		printf("Interface list empty \n");
+		return NULL;
+	}
+	if_walker = sr->if_list;
 
-    close(fd);
+	uint8_t* ip = (uint8_t*)malloc(sizeof(uint8_t) * 4);
 
-    mac = (unsigned char *)ifr.ifr_hwaddr.sa_data;
-
-    //display mac address
-    //printf("Mac : %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n" , mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    memcpy(address, mac, 6);
-    return address;
-
+	while(if_walker)
+	{
+		if(!strncmp(if_walker->name, interface, 6))
+		{
+			*(ip) = if_walker->ip;
+			*(ip + 1) = if_walker->ip>>8;
+			*(ip + 2) = if_walker->ip>>16;		
+			*(ip + 3) = if_walker->ip>>24;
+		}	
+		if_walker = if_walker->next;
+	}
+	return ip;
 }
-
-uint8_t* retrieve_ip_address(uint8_t num[]){
-
-    struct ifaddrs *myaddrs, *ifa;
-    void *in_addr;
-    char buf[64];
-    char ip[15];
-    char ip_copy[15];
-    char temp[3], temp_copy[3], l_copy[1], l2_copy[2];
-
-    if(getifaddrs(&myaddrs) != 0)
-    {
-        perror("getifaddrs");
-        exit(1);
-    }
-    int i = 0;
-    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
-    {
-
-        if (ifa->ifa_addr == NULL)
-            continue;
-        if (!(ifa->ifa_flags & IFF_UP))
-            continue;
-
-        switch (ifa->ifa_addr->sa_family)
-        {
-            case AF_INET:
-            {
-                struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
-                in_addr = &s4->sin_addr;
-                break;
-            }
-
-            case AF_INET6:
-            {
-                struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-                in_addr = &s6->sin6_addr;
-                break;
-            }
-
-            default:
-                continue;
-        }
-if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
-        {
-            //printf("%s: inet_ntop failed!\n", ifa->ifa_name);i
-	    return NULL;
-        }
-        else
-        {
-            //printf("%s: %s\n", ifa->ifa_name, buf);
-        }
-        if (i == 1){
-                memcpy(ip, buf, 15);
-                int j = 0, k = 0, l = 0, g = 0;
-                while (ip[j] <= 57 && ip[j] > 45 ){
-                        if (ip[j] != 46){
-                                ip_copy[k++] = ip[j++];
-                                temp[l++] = ip_copy[k-1];
-                        }
-                        else {
-                                j++;
-                                if ( l == 1){
-                                        memcpy(l_copy, temp+2, 1);
-                                        num[g++] = (uint8_t)atoi(l_copy);
-                                        //printf("l_copy: %s, temp+2: %s\n", l_copy, temp+2);
-                                }
-                                else if (l == 2) {
-                                        temp[2] = '\0';
-                                        memcpy(l2_copy, temp, 2);
-                                        num[g++] = (uint8_t)atoi(l2_copy);
-                                        //printf("l2_copy: %s, temp+2: %s\n", l2_copy, temp+1);
-                                }
-                                else {
-                                        memcpy(temp_copy, temp, l);
-                                        num[g++] = (uint8_t)atoi(temp_copy);
-                                }
-                                l = 0;
-                        }
-                }
-                if ( l == 1){
-                                        memset(temp_copy, 0, 3);
-                                        memcpy(temp_copy+1, temp, 2);
-                                        num[g++] = (uint8_t)atoi(temp_copy);
-                }
-                else if (l == 2) {
-                                        temp[2] = '\0';
-                                        memcpy(l2_copy, temp, 2);
-                                        num[g++] = (uint8_t)atoi(l2_copy);
-
-                      }
-
-                else {
-                           memcpy(temp_copy, temp, l);
-                           num[g++] = (uint8_t)atoi(temp_copy);
-                }
-                memset(temp, 0, 3);
-                ip_copy[k] = '\0';
-        }
-        i++;
-    }
-
-    freeifaddrs(myaddrs);
-    return num;
-}
-
 

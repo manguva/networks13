@@ -104,8 +104,8 @@ void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 void add_arp_entry(arp_cache_entry *, arp_cache_entry *);
 void pretty_print_arp_table(arp_cache_entry *);
-uint8_t * retrieve_ip_address(uint8_t []);
-char * retrieve_mac_address(char *);
+uint8_t * retrieve_ip_address(struct sr_instance*, char*);
+unsigned char * retrieve_mac_address(struct sr_instance*, char*);
 uint32_t convert_ip_to_integer(uint8_t ip_address[]);
 
 /* -- sr_if.c -- */
