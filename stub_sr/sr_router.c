@@ -103,14 +103,43 @@ void sr_handlepacket(struct sr_instance* sr,
 		    unsigned char* us_MAC = retrieve_mac_address(sr, interface);
 		    uint8_t* us_IP = retrieve_ip_address(sr, interface); 
 		    uint8_t bytes [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+		    //testing buffer
+		    uint8_t *buf = (uint8_t*)malloc(42 * sizeof(char));
+		    memset(buf, 0, 42);
+	            uint8_t reply[] = {0x00, 0x02};
 		    //************if it is an ARP request******************/
 		    //if broadcast, check destination ip and compare with local ip
 		    //if yes, construct arp reply to sender
 		    if(!memcmp(packet, bytes, 6)){
 			    if(!memcmp(packet + 38, us_IP, 4)){
 				    //construct reply ARP packet
-				    dealWithARPRequest(sr, packet, interface, entry, us_IP, us_MAC);                   
-				    printf("complete ARP request\n");
+			//   dealWithARPRequest(sr, packet, interface, entry, us_IP, us_MAC);                   
+				    memcpy(buf, packet + 6, 6);
+				    memcpy(buf+6, us_MAC, 6);
+				    memcpy(buf+12, packet+12, 2);
+   				    memcpy(buf+14, packet+14, 2);
+				    memcpy(buf+16, packet+16, 2);
+				    memcpy(buf+18, packet+18, 1);
+				    memcpy(buf+19, packet+19, 1);
+				    memcpy(buf+20, reply, 2);
+				    memcpy(buf+28, packet+38, 4);
+                                    memcpy(buf+22, us_MAC, 6);
+                                  //  memcpy(buf+32, packet+6, 6);
+				    memcpy(buf+38, packet+28, 4);
+				    int ii = 0;
+				    printf("Request packet contents:");
+				    while (ii < 42){
+						printf("%hx ", packet[ii++]);
+				    }
+				    printf("\n");
+				    ii = 0;
+                                    printf("Reply packet contents:");
+                                    while (ii < 42){
+                                                printf("%hx ", buf[ii++]);
+                                    }
+                                    printf("\n");
+				    sr_send_packet(sr,(uint8_t* )buf, 42, interface);
+				    //printf("complete ARP request\n");
 			    }
 		    }
 		    else
