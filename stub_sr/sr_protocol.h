@@ -78,7 +78,9 @@
 /*
  * Structure of an internet header, naked of options.
  */
-struct ip
+
+#ifndef _IP_ICMP_H_
+struct iph
   {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned int ip_hl:4;		/* header length */
@@ -102,7 +104,7 @@ struct ip
     uint16_t ip_sum;			/* checksum */
     struct in_addr ip_src, ip_dst;	/* source and dest address */
   } __attribute__ ((packed)) ;
-
+#endif
 /* 
  *  Ethernet packet header prototype.  Too many O/S's define this differently.
  *  Easy enough to solve that and define it here.

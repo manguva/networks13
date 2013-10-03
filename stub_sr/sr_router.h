@@ -18,6 +18,7 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <sys/ioctl.h>
+#include <netinet/ip_icmp.h>
 #include <unistd.h>   //close
 #include "sr_protocol.h"
 #ifdef VNL

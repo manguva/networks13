@@ -121,7 +121,6 @@ void sr_handlepacket(struct sr_instance* sr,
 				    memcpy(sender_MAC, packet + 6, 4);
 				    memcpy(entry->mac_address_uint8_t, sender_MAC, 6);
 				
-				    //???????????????	
 				    memcpy(entry->mac_address_unsigned_char, sender_MAC, 6);      
 
 				    entry->interface_type = interface;
@@ -152,7 +151,6 @@ void sr_handlepacket(struct sr_instance* sr,
 				    memcpy(sender_MAC, packet + 6, 4);
 				    memcpy(entry->mac_address_uint8_t, sender_MAC, 6);
 				
-				    //???????????????	
 				    memcpy(entry->mac_address_unsigned_char, sender_MAC, 6);      
 
 				    entry->interface_type = interface;
@@ -164,6 +162,13 @@ void sr_handlepacket(struct sr_instance* sr,
 		    }
 
 	    }
+	    //is the packet IP or not?
+            else if( packet[12] == 8 && packet[13] == 0)
+	    {
+			uint8_t* version = (uint8_t*)malloc(sizeof(uint8_t)*4);
+			memcpy(version, packet + 14, 4);
+			printf("a IP PACKET!");
+		}
     }
 
 }/* end sr_ForwardPacket */
