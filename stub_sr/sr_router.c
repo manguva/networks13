@@ -126,18 +126,6 @@ void sr_handlepacket(struct sr_instance* sr,
                                     memcpy(buf+22, us_MAC, 6);
                                   //  memcpy(buf+32, packet+6, 6);
 				    memcpy(buf+38, packet+28, 4);
-				    int ii = 0;
-				    printf("Request packet contents:");
-				    while (ii < 42){
-						printf("%hx ", packet[ii++]);
-				    }
-				    printf("\n");
-				    ii = 0;
-                                    printf("Reply packet contents:");
-                                    while (ii < 42){
-                                                printf("%hx ", buf[ii++]);
-                                    }
-                                    printf("\n");
 				    sr_send_packet(sr,(uint8_t* )buf, 42, interface);
 				    //printf("complete ARP request\n");
 			    }
