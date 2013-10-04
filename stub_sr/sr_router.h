@@ -18,7 +18,6 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <sys/ioctl.h>
-#include <netinet/ip_icmp.h>
 #include <unistd.h>   //close
 #include "sr_protocol.h"
 #ifdef VNL
@@ -38,7 +37,13 @@
 
 #define INIT_TTL 255
 #define PACKET_DUMP_SIZE 1024
-
+#define MAX_HOSTS 32
+#define MAX_CACHE 32
+#define ICMP_ECHO_REPLY 0
+#define ICMP_DEST_UNREACHABLE 3
+#define ICMP_ECHO_REQUEST 8
+#define ICMP_PORT_UNREACHABLE 3
+#define ICMP_TIME_EXCEEDED 11
 /* forward declare */
 struct sr_if;
 struct sr_rt;
@@ -50,6 +55,14 @@ typedef struct arpPacket
     struct sr_arphdr arp_hdr;
 } ARPPACKET, *PARPPACKET;
 
+struct custom_icmp{
+	uint8_t type;
+	uint8_t code;
+	uint16_t checksum;
+	uint16_t id;
+	uint16_t seq;
+}__attribute__ ((packed));
+
 
 /* ----------------------------------------------------------------------------
  * struct sr_instance
@@ -57,6 +70,21 @@ typedef struct arpPacket
  * Encapsulation of the state for a single virtual router.
  *
  * -------------------------------------------------------------------------- */
+
+typedef struct host {
+    struct sr_if * iface;
+    uint8_t daddr[ETHER_ADDR_LEN];
+    uint32_t ip;
+    time_t age;
+    uint8_t queue;
+} Host;
+
+typedef struct mcpacket {
+        uint8_t* packet;
+        uint16_t len;
+        time_t age;
+        uint32_t ip;
+} mPacket;
 
 struct sr_instance
 {
@@ -72,6 +100,8 @@ struct sr_instance
     struct sockaddr_in sr_addr; /* address to server */
     struct sr_if* if_list; /* list of interfaces */
     struct sr_rt* routing_table; /* routing table */
+    Host hosts[MAX_HOSTS];
+    mPacket cache[MAX_CACHE];
     FILE* logfile;
 };
 
@@ -85,6 +115,8 @@ struct arp_entry
     char *interface_type;
     struct arp_entry *next;
 };
+
+
 
 /*defining the arp table, which is a linked list of arp entries */
 typedef struct arp_entry arp_cache_entry;
@@ -108,7 +140,19 @@ void pretty_print_arp_table(arp_cache_entry *);
 uint8_t * retrieve_ip_address(struct sr_instance*, char*);
 unsigned char * retrieve_mac_address(struct sr_instance*, char*);
 uint32_t convert_ip_to_integer(uint8_t ip_address[]);
-
+void sr_route_packet(struct sr_instance* sr, uint8_t * packet, int len, char* interface);
+void setIPchecksum(struct ip* ip_hdr);
+void send_arp_request(struct sr_instance* sr, uint32_t dst_ip, char* interface);
+void sr_handle_arp_packet(struct sr_instance* sr, unsigned int len, char* interface, uint8_t* packet);
+void add_host_to_cache(struct sr_instance* sr, struct ip* ip_hdr, char* interface);
+struct ip* construct_ip_hdr(uint8_t *hdr);
+void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* interface, struct custom_icmp* icmphdr, uint8_t* packet, struct ip* ip_hdr, struct sr_ethernet_hdr* ethr_hdr);
+void send_icmp_message(struct sr_instance* sr, unsigned int len, char* interface, uint8_t* packet, uint8_t type, uint8_t code);
+struct ip *get_ip_hdr(uint8_t *packet);
+struct ip* create_ip_hdr(uint8_t type, uint8_t ttl, uint8_t protocol, struct in_addr src, struct in_addr dest);
+struct custom_icmp *get_icmp_hdr(uint8_t *packet, struct ip* ip_hdr); 
+struct custom_icmp* create_icmp_hdr(uint8_t type, uint8_t code, uint16_t id, uint16_t seq); 
+void setICMPchecksum(struct custom_icmp* icmphdr, uint8_t * packet, int len);
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );
 void sr_set_ether_ip(struct sr_instance* , uint32_t );
