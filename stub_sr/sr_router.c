@@ -24,16 +24,8 @@
 #include "sr_protocol.h"
 
 arp_cache_entry arp_table;
-struct sr_handlepacket_input
-{
-	struct sr_instance *sr;
-	uint8_t *packet;
-	unsigned int len;
-	char *interface;
-};
-
-/*--------------------------------------------------------------------- 
- * Method: sr_init(void)
+/* 
+* Method: sr_init(void)
  * Scope:  Global
  *
  * Initialize the routing subsystem
@@ -44,6 +36,8 @@ void sr_init(struct sr_instance* sr)
 {
 	/* REQUIRES */
 	assert(sr);
+	memset(&(sr->hosts[0]),0,sizeof(Host) * MAX_HOSTS);
+    	memset(&(sr->cache[0]),0,sizeof(mPacket) * MAX_CACHE);
 
 	/* Add initialization code here! */
 
@@ -80,9 +74,10 @@ void sr_handlepacket(struct sr_instance* sr,
 	arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
 	//    printf("Received packet\n");
 	//int i = len;
+        printf("Packet received: \n");
 	struct sr_if *eth_if = (struct sr_if *) sr_get_interface(sr, interface);
 	if(eth_if) {
-		printf("Interface: %s \n", eth_if->name);
+		printf("Dealing with interface: %s \n", eth_if->name);
 	} else {
 		printf("!!! Invalid Interface: %s \n", interface);
 	}
@@ -177,6 +172,7 @@ void sr_handlepacket(struct sr_instance* sr,
 				//uint8_t* version = (uint8_t*)malloc(sizeof(uint8_t)*4);
 				struct ip *iphdr;
 				iphdr = construct_ip_hdr(packet);
+				add_host_to_cache(sr,iphdr,interface);
 				struct sr_if *interfaces = sr->if_list;
 				while(interfaces) {
 					if (iphdr->ip_dst.s_addr == interfaces->ip) break;
@@ -187,14 +183,16 @@ void sr_handlepacket(struct sr_instance* sr,
 					struct custom_icmp* my_icmp = (struct custom_icmp*)(packet + sizeof(struct sr_ethernet_hdr) + iphdr->ip_hl * 4); 
 					if(iphdr->ip_p == IPPROTO_ICMP && my_icmp->type == ICMP_ECHO_REQUEST){ 
 						my_icmp = get_icmp_hdr(packet, iphdr);
+						printf("Echo request inside IP packet\n");
 						sr_handle_icmp_packet(sr, len, interface, my_icmp, packet, iphdr, (struct sr_ethernet_hdr *) packet);
 					}
 					else {
+						printf("Echo request inside IP packet interfaces\n");
 						send_icmp_message(sr, len, interface, packet, ICMP_DEST_UNREACHABLE, ICMP_PORT_UNREACHABLE);
 					}
 				} else {
 					if (iphdr->ip_ttl > 1) {
-						sr_route_packet(sr,packet,len,interface);
+							sr_route_packet(sr,packet,len,interface);
 					} else {
 						send_icmp_message(sr, len, interface, packet, ICMP_TIME_EXCEEDED, 0);
 					}
@@ -204,7 +202,10 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
 		default:
-			printf("!!! Unrecognized Protocol Type: %d \n", eth_hdr->ether_type);
+			{
+				printf("Invalid protocol\n");
+				send_icmp_message(sr, len, interface, packet, ICMP_DEST_UNREACHABLE, ICMP_PORT_UNREACHABLE);
+			}
 	}
 
 }/* end sr_ForwardPacket */
@@ -284,8 +285,8 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 			setICMPchecksum(icmphdr, packet + sizeof (struct sr_ethernet_hdr) + ip_hdr->ip_hl * 4, len - sizeof (struct sr_ethernet_hdr) - ip_hdr->ip_hl * 4);
 			sr_send_packet(sr, packet, len, interface);
 		} else { /*echo request to app server or other interface */
-
-		}
+		
+			}
 		}
 	}
 
@@ -306,8 +307,8 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 			out_eth_hdr->ether_shost[i] = tmp;
 		}
 		struct ip* in_ip_hdr = get_ip_hdr(packet);
-		//struct in_addr src;
-		//src.s_addr = sr_get_interface(sr, interface)->ip;
+		struct in_addr src;
+		src.s_addr = sr_get_interface(sr, interface)->ip;
 		struct ip* tmp_ip = create_ip_hdr(0, 20, IPPROTO_ICMP, in_ip_hdr->ip_dst, in_ip_hdr->ip_src);
 		struct ip* out_ip_hdr = (struct ip *) (outpack + sizeof (struct sr_ethernet_hdr));
 		memcpy(outpack + sizeof (struct sr_ethernet_hdr), tmp_ip, 20);
@@ -456,7 +457,7 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
     		icmphdr->checksum = ~sum;
 	}
 
-		struct ip* construct_ip_hdr(uint8_t *packet){
+        struct ip* construct_ip_hdr(uint8_t *packet){
 		return (struct ip*) (packet + sizeof(struct sr_ethernet_hdr));	
 	}
 
@@ -535,6 +536,8 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 		for (i = 0; i < MAX_HOSTS; i++){
 			if (sr->hosts[i].ip == ip){
 				sr->hosts[i].iface = sr_get_interface(sr, interface);
+				sr->hosts[i].queue = 0;
+            			sr->hosts[i].age = time(0);
 				int j = 0;
 				while ( j < ETHER_ADDR_LEN){
 					sr->hosts[i].daddr[j] = eth_hdr->ether_shost[j];
@@ -549,6 +552,8 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 				if (sr->hosts[i].ip == 0){
 					sr->hosts[i].ip = ip;
 					sr->hosts[i].iface = sr_get_interface(sr, interface);
+					sr->hosts[i].queue = 0;
+            				sr->hosts[i].age = time(0);
 					int j = 0;
 					while ( j < ETHER_ADDR_LEN){
 						sr->hosts[i].daddr[j] = eth_hdr->ether_shost[j];
@@ -566,7 +571,7 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 	void sr_route_packet(struct sr_instance * sr, uint8_t * packet, int len, char* interface) {
 		struct ip* ip_hdr = (struct ip *) (packet + sizeof(struct sr_ethernet_hdr));
 		uint32_t dst_ip = ip_hdr->ip_dst.s_addr;
-
+                int flag = 0;
 		int i;
 		uint8_t to_cache = 1;
 		for (i = 0; i < MAX_HOSTS; i ++) {
@@ -605,6 +610,14 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 						sr->cache[i].ip = dst_ip;
 						break;
 					}
+				struct custom_icmp* my_icmp = (struct custom_icmp*)(packet + sizeof(struct sr_ethernet_hdr) + ip_hdr->ip_hl * 4);
+                                                
+                                              if (ip_hdr->ip_p == IPPROTO_ICMP && my_icmp->type == ICMP_ECHO_REQUEST && !flag){
+                                        //      printf("Echo request inside IP packet ttl with protocol type: %d and icmp_type: %d\n", iphdr->ip_p, my_icmp->type);
+                                              send_icmp_message(sr, len, interface, packet, ICMP_DEST_UNREACHABLE, ICMP_PORT_UNREACHABLE);
+                                        	flag = 1; 
+					     }
+
 				}
 			}
 		} else {
@@ -675,3 +688,4 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 		}
 		free(packet);
 	}
+
