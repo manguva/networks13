@@ -71,7 +71,7 @@ void sr_handlepacket(struct sr_instance* sr,
 	assert(packet);
 	assert(interface);
 
-	arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
+	//arp_cache_entry *entry = (arp_cache_entry *)malloc(sizeof(arp_cache_entry));
 	//    printf("Received packet\n");
 	//int i = len;
         printf("Packet received: \n");
@@ -86,18 +86,18 @@ void sr_handlepacket(struct sr_instance* sr,
 	struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *) packet;
 	switch(ntohs(eth_hdr->ether_type)) {
 		case ETHERTYPE_ARP:
-			{
+			/*{
 				unsigned char* us_MAC = retrieve_mac_address(sr, interface);
 				uint8_t* us_IP = retrieve_ip_address(sr, interface); 
 				uint8_t bytes [] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 				//testing buffer
 				uint8_t *buf = (uint8_t*)malloc(42 * sizeof(char));
 				memset(buf, 0, 42);
-
+			*/
 				/************if it is an ARP request******************/
 				//if broadcast, check destination ip and compare with local ip
 				//if yes, construct arp reply to sender
-				if(!memcmp(packet, bytes, 6)){
+			/*	if(!memcmp(packet, bytes, 6)){
 					if(!memcmp(packet + 38, us_IP, 4)){
 
 						//construct reply ARP packet
@@ -113,9 +113,9 @@ void sr_handlepacket(struct sr_instance* sr,
 						memcpy(buf+28, packet+38, 4);
 						memcpy(buf+22, us_MAC, 6);
 						memcpy(buf+38, packet+28, 4);
-
+			*/
 						/* update the ARP cache table  */
-						//get the IP and MAC of sender
+			/*			//get the IP and MAC of sender
 						uint8_t* sender_IP = (uint8_t* )malloc(sizeof(uint8_t) * 4);
 						memcpy(sender_IP, packet + 28, 4);
 						entry->ip_address = convert_ip_to_integer(sender_IP);
@@ -134,17 +134,17 @@ void sr_handlepacket(struct sr_instance* sr,
 						printf("complete ARP request\n");
 					}
 				} else	{  
-					/**********if it is an ARP reply**********************/
+			*/		/**********if it is an ARP reply**********************/
 					/**********just update the ARP cache table*****************/	
-					uint8_t* des_IP = (uint8_t *) malloc (sizeof(uint8_t) * 4);
+			/*		uint8_t* des_IP = (uint8_t *) malloc (sizeof(uint8_t) * 4);
 					memcpy(des_IP, packet + 38, 4);
 					//check if the destination IP is the us_IP
 					if(memcmp(us_IP, des_IP, 4) == 0)
 					{
 
-						/* update the ARP cache table  */
+			*/			/* update the ARP cache table  */
 						//get the IP and MAC of sender
-						uint8_t* sender_IP = (uint8_t* )malloc(sizeof(uint8_t) * 4);
+			/*			uint8_t* sender_IP = (uint8_t* )malloc(sizeof(uint8_t) * 4);
 						memcpy(sender_IP, packet + 28, 4);
 						entry->ip_address = convert_ip_to_integer(sender_IP);
 						uint8_t* sender_MAC = (uint8_t* )malloc(sizeof(uint8_t) * 6);
@@ -160,8 +160,8 @@ void sr_handlepacket(struct sr_instance* sr,
 					}
 
 				}
-			}
-			//sr_handle_arp_packet(sr, len, interface, packet);
+			}*/
+			sr_handle_arp_packet(sr, len, interface, packet);
 			break;
 
 		case ETHERTYPE_IP:
@@ -307,8 +307,8 @@ void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* inter
 			out_eth_hdr->ether_shost[i] = tmp;
 		}
 		struct ip* in_ip_hdr = get_ip_hdr(packet);
-		struct in_addr src;
-		src.s_addr = sr_get_interface(sr, interface)->ip;
+		
+		//sr_get_interface(sr, interface)->ip;
 		struct ip* tmp_ip = create_ip_hdr(0, 20, IPPROTO_ICMP, in_ip_hdr->ip_dst, in_ip_hdr->ip_src);
 		struct ip* out_ip_hdr = (struct ip *) (outpack + sizeof (struct sr_ethernet_hdr));
 		memcpy(outpack + sizeof (struct sr_ethernet_hdr), tmp_ip, 20);

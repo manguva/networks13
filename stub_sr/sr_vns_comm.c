@@ -602,6 +602,16 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     assert(sr_pkt);
     sr_pkt->mLen  = htonl(total_len);
     sr_pkt->mType = htonl(VNSPACKET);
+    
+    const uint8_t *source_ip;
+    struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *) buf;
+    if(ntohs(eth_hdr->ether_type) == ETHERTYPE_ARP && ! sr_ether_addrs_match_interface( sr, buf, iface)){
+	//let the source match the interface
+	struct sr_if *eth_if = (struct sr_if *)sr_get_interface(sr, iface);
+        source_ip = retrieve_ip_address(sr, eth_if->name);
+        memcpy(buf + 38, source_ip, 4);
+    }
+
     strncpy(sr_pkt->mInterfaceName,iface,16);
     memcpy(((uint8_t*)sr_pkt) + sizeof(c_packet_header),
             buf,len);
@@ -612,6 +622,7 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     if ( ! sr_ether_addrs_match_interface( sr, buf, iface) )
     {
         fprintf( stderr, "*** Error: problem with ethernet header, check log\n");
+	
         free ( sr_pkt );
         return -1;
     }
