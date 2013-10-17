@@ -1040,7 +1040,12 @@ void send_arp_request(struct sr_instance * sr, uint32_t dst_ip)
 			int ii = 0;
 			while( ii < MAX_HOSTS){
 				if ( sr->hosts[ii].ip == ds_ip){
-					sr->hosts[ii].wait_packet->counter++;
+					struct wait_packet* curr = sr->hosts[ii].wait_packet;
+	                                struct wait_packet* temp;
+        	                        while(curr){                                                	
+							curr->counter++;
+							curr = curr->next;
+                                        	}
 				}	
 				ii++;
 			}
