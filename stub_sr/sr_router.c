@@ -27,13 +27,18 @@
 
 arp_cache_entry arp_table;
 /* 
-* Method: sr_init(void)
+ * Method: sr_init(void)
  * Scope:  Global
  *
  * Initialize the routing subsystem
  * 
  *---------------------------------------------------------------------*/
 
+struct args
+{
+	struct sr_instance* sr;
+	uint8_t* packet;
+};
 
 void sr_init(struct sr_instance* sr) 
 {
@@ -46,7 +51,7 @@ void sr_init(struct sr_instance* sr)
 
 } /* -- sr_init -- */
 
-void clear_cache(struct sr_instance *sr){
+void clear_cache(struct args * argument){
 	//if(!sr) return;
 	//printf("Segfault because sr: %x\n", sr->hosts);
 	//      memcpy(sr->hosts, calloc(1, sizeof(Host) * MAX_HOSTS), sizeof(Host) * MAX_HOSTS);
@@ -59,41 +64,102 @@ void clear_cache(struct sr_instance *sr){
 
 	while(1){
 		sleep(5);
-//		      printf("Clearing the cache\n");
+		//		      printf("Clearing the cache\n");
 		int ii = 0;
-		        uint32_t ds_ip = 0;
-                	struct sr_rt * rt_b_walker = sr->routing_table;
-			ds_ip = rt_b_walker->gw.s_addr;
-			while( ii < MAX_HOSTS){
-				if ( sr->hosts[ii].ip == ds_ip){
-					struct wait_packet* curr = sr->hosts[ii].wait_packet;
-	                                struct wait_packet* temp;
-        	                        while(curr){                                                	
-							curr->counter++;
-							curr = curr->next;
-                                        	}
-				}	
+
+		
+		//scan each wait packet, decide to help them send_arp_request or delete them
+		struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *)(argument->packet);
+		
+		if(ntohs(eth_hdr->ether_type == ETHERTYPE_IP))
+		{
+			//get the re_ds_ip of packdt we current handle
+			struct ip * re_iphdr = (struct ip *)(argument->packet + sizeof(struct sr_ethernet_hdr));
+			uint32_t re_ds_ip = 0;
+			struct sr_rt * rt_walker_1 = argument->sr->routing_table;
+			re_ds_ip = rt_walker_1->gw.s_addr;
+			while(rt_walker_1 != NULL)
+			{
+				if(re_iphdr->ip_dst.s_addr == rt_walker_1->dest.s_addr)
+				{
+					re_ds_ip = rt_walker_1->dest.s_addr;
+					break;
+				}
+				rt_walker_1 = rt_walker_1->next;
+			}
+
+			
+			//scan each wait packet, if re_ds_ip == ds_ip, add their counter
+			while( ii < MAX_HOSTS)
+			{
+				struct wait_packet* curr = argument->sr->hosts[ii].wait_packet;
+				while(curr)
+				{
+					uint32_t ds_ip = 0;
+					struct ip * iphdr = (struct ip *)(curr->packet + sizeof(struct sr_ethernet_hdr));
+					struct sr_rt * rt_walker = argument->sr->routing_table;
+					ds_ip = rt_walker->gw.s_addr;
+					while(rt_walker != NULL)
+					{
+						if(iphdr->ip_dst.s_addr == rt_walker->dest.s_addr)
+						{
+							ds_ip = rt_walker->dest.s_addr;
+							break;
+						}
+						rt_walker = rt_walker->next;
+					}
+
+
+					if ( re_ds_ip == ds_ip)
+						curr->counter++;
+
+					curr = curr->next;
+				}
 				ii++;
 			}
+
+			//scan each wait packet, if couner = 5 drop it, otherwise help them send_arp_request 
 			ii = 0;		
 			while( ii < MAX_HOSTS){
-				struct wait_packet* curr = sr->hosts[ii].wait_packet;
+				struct wait_packet* curr = argument->sr->hosts[ii].wait_packet;
 				struct wait_packet* temp;
 				while(curr){
+					uint32_t ds_ip = 0;
+					struct ip * iphdr = (struct ip *)(curr->packet + sizeof(struct sr_ethernet_hdr));
+					struct sr_rt * rt_walker = argument->sr->routing_table;
+					ds_ip = rt_walker->gw.s_addr;
+					while(rt_walker != NULL)
+					{
+						if(iphdr->ip_dst.s_addr == rt_walker->dest.s_addr)
+						{
+							ds_ip = rt_walker->dest.s_addr;
+							break;
+						}
+						rt_walker = rt_walker->next;
+					}
+
 					if(curr->counter == 5){
 						temp = curr;
 						curr = curr->next;
- 						free(temp);
+						free(temp);
 						//send_icmp_message(sr, len, interface, packet, ICMP_DEST_UNREACHABLE, ICMP_PORT_UNREACHABLE);
 					} else {
-						send_arp_request(sr, ds_ip); 
+						send_arp_request(argument->sr, ds_ip); 
 						curr = curr->next;
 					}
 				}
-                                ii++;
-                        }
-        ii = 0;				
-	while(ii < MAX_CACHE){
+				ii++;
+			}
+		}
+
+
+
+		//clear the arp cache table
+		//--------------------------arp cache table is stored at arp_table------------
+		//--------need fix here----------------------------
+/*
+		ii = 0;				
+		while(ii < MAX_CACHE){
 			//      if(!sr->cache[ii]){ return; }
 			time_t now = time(0);
 			if(sr->cache[ii].age > 0 && time(0) - sr->cache[ii].age > 15){
@@ -104,6 +170,9 @@ void clear_cache(struct sr_instance *sr){
 			}
 			ii++;
 		}
+
+*/
+
 		break;
 	}
 }
