@@ -59,7 +59,7 @@ void clear_cache(struct sr_instance *sr){
 
 	while(1){
 		sleep(5);
-		//      printf("Clearing the cache\n");
+//		      printf("Clearing the cache\n");
 		int ii = 0;
 		while(ii < MAX_CACHE){
 			//      if(!sr->cache[ii]){ return; }
@@ -103,6 +103,8 @@ void sr_handlepacket(struct sr_instance* sr,
 	assert(sr);
 	assert(packet);
 	assert(interface);
+	pthread_t thread1;
+	pthread_create( &thread1, NULL, clear_cache, (void*) sr);
 
 	printf("\n\n Packet received: \n");
 	struct sr_if *eth_if = (struct sr_if *) sr_get_interface(sr, interface);
@@ -1030,7 +1032,25 @@ void send_arp_request(struct sr_instance * sr, uint32_t dst_ip)
 
 			//设置ARP Request的源IP为interface的IP
 			arp_hdr->ar_sip = iface->ip;
-
+			//get next hop ip addr
+                	uint32_t ds_ip = 0;
+                	struct ip * iphdr =(struct ip *)(packet + sizeof(struct sr_ethernet_hdr));
+                	struct sr_rt * rt_b_walker = sr->routing_table;
+			ds_ip = rt_b_walker->gw.s_addr;
+			int ii = 0;
+			while( ii < MAX_HOSTS){
+				if ( sr->hosts[ii].ip == ds_ip){
+					sr->hosts[ii].wait_packet->counter++;
+				}	
+				ii++;
+			}
+			ii = 0;		
+			while( ii < MAX_HOSTS){
+                                if ( sr->hosts[ii].wait_packet->counter >= 5){
+                           //             memset(sr->hosts[ii].wait_packet, 0, sizeof(struct wait_packet));
+                                }
+                                ii++;
+                        }				
 			sr_send_packet(sr, packet, sizeof (struct sr_ethernet_hdr) + sizeof (struct sr_arphdr), iface->name);
 
 		}
