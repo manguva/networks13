@@ -1046,9 +1046,17 @@ void send_arp_request(struct sr_instance * sr, uint32_t dst_ip)
 			}
 			ii = 0;		
 			while( ii < MAX_HOSTS){
-                                if ( sr->hosts[ii].wait_packet->counter >= 5){
-                           //             memset(sr->hosts[ii].wait_packet, 0, sizeof(struct wait_packet));
-                                }
+				struct wait_packet* curr = sr->hosts[ii].wait_packet;
+				struct wait_packet* temp;
+				while(curr){
+					if(curr->counter == 5){
+						temp = curr;
+						curr = curr->next;
+ 						free(temp);
+					} else {
+						curr = curr->next;
+					}
+				}
                                 ii++;
                         }				
 			sr_send_packet(sr, packet, sizeof (struct sr_ethernet_hdr) + sizeof (struct sr_arphdr), iface->name);
