@@ -24,6 +24,8 @@
 #include "vnlconn.h"
 #endif
 
+typedef enum __bool { false = 0, true = 1, } bool;
+
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
 #define Debug(x, args...) printf(x, ## args)
@@ -75,13 +77,23 @@ struct custom_icmp{
  * Encapsulation of the state for a single virtual router.
  *
  * -------------------------------------------------------------------------- */
+typedef struct wait_packet
+{
+	uint8_t * packet;
+	uint8_t len;
+	uint8_t counter;
+	char interface[4];
+	struct wait_packet * next;
+}wait_packet;
 
 typedef struct host {
     struct sr_if * iface;
-    uint8_t daddr[ETHER_ADDR_LEN];
+    uint8_t daddr[ETHER_ADDR_LEN];//certain interace's MAC
     uint32_t ip;
     time_t age;
     uint8_t queue;
+	char * interface;
+	wait_packet * wait_packet;
 } Host;
 
 typedef struct mcpacket {
@@ -118,6 +130,7 @@ struct arp_entry
     uint8_t mac_address_uint8_t[6];
     unsigned char mac_address_unsigned_char[6];
     char *interface_type;
+	uint8_t counter;
     struct arp_entry *next;
 };
 
@@ -129,6 +142,17 @@ typedef struct arp_entry arp_cache_entry;
 /*define global variable arp_table */
 arp_cache_entry arp_table;  
 
+
+struct pre_arp_entry
+{
+	uint32_t dst_ip;
+	uint8_t wearlimit;
+	struct pre_arp_entry * next;
+};
+
+typedef struct pre_arp_entry pre_arp_cache_entry;
+pre_arp_cache_entry pre_arp_entry_list;
+
 /* -- sr_main.c -- */
 int sr_verify_routing_table(struct sr_instance* sr);
 
@@ -138,18 +162,21 @@ int sr_connect_to_server(struct sr_instance* ,unsigned short , char* );
 int sr_read_from_server(struct sr_instance* );
 
 /* -- sr_router.c -- */
-void sr_init(struct sr_instance* );
-void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
-void add_arp_entry(arp_cache_entry *, arp_cache_entry *);
-void pretty_print_arp_table(arp_cache_entry *);
 uint8_t * retrieve_ip_address(struct sr_instance*, char*);
 unsigned char * retrieve_mac_address(struct sr_instance*, char*);
+bool is_new_entry(uint8_t *, char*, struct sr_instance *);
+void update_arp_table(struct sr_instance *, char *, arp_cache_entry *, uint8_t *);
+void sr_init(struct sr_instance* );
+void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
+//void add_arp_entry(arp_cache_entry *, arp_cache_entry *);
+void pretty_print_arp_table(arp_cache_entry *);
+void initialize_hosts(struct sr_instance * sr);
 uint32_t convert_ip_to_integer(uint8_t ip_address[]);
 void sr_route_packet(struct sr_instance* sr, uint8_t * packet, int len, char* interface);
 void setIPchecksum(struct ip* ip_hdr);
-void send_arp_request(struct sr_instance* sr, uint32_t dst_ip, char* interface);
+void send_arp_request(struct sr_instance* sr, uint32_t dst_ip);
 void sr_handle_arp_packet(struct sr_instance* sr, unsigned int len, char* interface, uint8_t* packet);
-void add_host_to_cache(struct sr_instance* sr, struct ip* ip_hdr, char* interface);
+//void add_host_to_cache(struct sr_instance* sr, struct ip* ip_hdr, char* interface);
 struct ip* construct_ip_hdr(uint8_t *hdr);
 void sr_handle_icmp_packet(struct sr_instance* sr, unsigned int len, char* interface, struct custom_icmp* icmphdr, uint8_t* packet, struct ip* ip_hdr, struct sr_ethernet_hdr* ethr_hdr);
 void send_icmp_message(struct sr_instance* sr, unsigned int len, char* interface, uint8_t* packet, uint8_t type, uint8_t code);
