@@ -61,7 +61,39 @@ void clear_cache(struct sr_instance *sr){
 		sleep(5);
 //		      printf("Clearing the cache\n");
 		int ii = 0;
-		while(ii < MAX_CACHE){
+		        uint32_t ds_ip = 0;
+                	struct sr_rt * rt_b_walker = sr->routing_table;
+			ds_ip = rt_b_walker->gw.s_addr;
+			while( ii < MAX_HOSTS){
+				if ( sr->hosts[ii].ip == ds_ip){
+					struct wait_packet* curr = sr->hosts[ii].wait_packet;
+	                                struct wait_packet* temp;
+        	                        while(curr){                                                	
+							curr->counter++;
+							curr = curr->next;
+                                        	}
+				}	
+				ii++;
+			}
+			ii = 0;		
+			while( ii < MAX_HOSTS){
+				struct wait_packet* curr = sr->hosts[ii].wait_packet;
+				struct wait_packet* temp;
+				while(curr){
+					if(curr->counter == 5){
+						temp = curr;
+						curr = curr->next;
+ 						free(temp);
+						//send_icmp_message(sr, len, interface, packet, ICMP_DEST_UNREACHABLE, ICMP_PORT_UNREACHABLE);
+					} else {
+						send_arp_request(sr, ds_ip); 
+						curr = curr->next;
+					}
+				}
+                                ii++;
+                        }
+        ii = 0;				
+	while(ii < MAX_CACHE){
 			//      if(!sr->cache[ii]){ return; }
 			time_t now = time(0);
 			if(sr->cache[ii].age > 0 && time(0) - sr->cache[ii].age > 15){
@@ -1033,38 +1065,7 @@ void send_arp_request(struct sr_instance * sr, uint32_t dst_ip)
 			//设置ARP Request的源IP为interface的IP
 			arp_hdr->ar_sip = iface->ip;
 			//get next hop ip addr
-                	uint32_t ds_ip = 0;
-                	struct ip * iphdr =(struct ip *)(packet + sizeof(struct sr_ethernet_hdr));
-                	struct sr_rt * rt_b_walker = sr->routing_table;
-			ds_ip = rt_b_walker->gw.s_addr;
-			int ii = 0;
-			while( ii < MAX_HOSTS){
-				if ( sr->hosts[ii].ip == ds_ip){
-					struct wait_packet* curr = sr->hosts[ii].wait_packet;
-	                                struct wait_packet* temp;
-        	                        while(curr){                                                	
-							curr->counter++;
-							curr = curr->next;
-                                        	}
-				}	
-				ii++;
-			}
-			ii = 0;		
-			while( ii < MAX_HOSTS){
-				struct wait_packet* curr = sr->hosts[ii].wait_packet;
-				struct wait_packet* temp;
-				while(curr){
-					if(curr->counter == 5){
-						temp = curr;
-						curr = curr->next;
- 						free(temp);
-					} else {
-						curr = curr->next;
-					}
-				}
-                                ii++;
-                        }				
-			sr_send_packet(sr, packet, sizeof (struct sr_ethernet_hdr) + sizeof (struct sr_arphdr), iface->name);
+     		sr_send_packet(sr, packet, sizeof (struct sr_ethernet_hdr) + sizeof (struct sr_arphdr), iface->name);
 
 		}
 		iface = iface->next;
