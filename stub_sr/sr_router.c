@@ -34,11 +34,6 @@ arp_cache_entry arp_table;
  * 
  *---------------------------------------------------------------------*/
 
-struct args
-{
-	struct sr_instance* sr;
-	uint8_t* packet;
-};
 
 void sr_init(struct sr_instance* sr) 
 {
@@ -51,16 +46,124 @@ void sr_init(struct sr_instance* sr)
 
 } /* -- sr_init -- */
 
-void clear_cache(struct args * argument){
-	//if(!sr) return;
-	//printf("Segfault because sr: %x\n", sr->hosts);
-	//      memcpy(sr->hosts, calloc(1, sizeof(Host) * MAX_HOSTS), sizeof(Host) * MAX_HOSTS);
-	//      memset(&(sr->hosts[0]),0,sizeof(Host) * MAX_HOSTS);
-	//      memset(&(sr->cache[0]),0,sizeof(mPacket) * MAX_CACHE);
-	//              while(1)
+void clear_arp_cache(struct sr_instance* sr){
+	 while(1){
+          sleep(5);
 
-	//   sleep(15000);
-	//   clear_cache();i
+	struct arp_entry *traverser = &arp_table;
+	struct arp_entry *follower = traverser;
+	struct arp_entry *temp;
+	while(traverser){
+		time_t now = time(0);
+		if ( now - traverser->timestamp > 15 ){
+			temp = traverser;
+			follower->next = traverser->next;
+			traverser = traverser->next;
+			if(temp != NULL){
+	//			free(temp);
+			}
+		} else {
+			follower = traverser;
+			traverser = traverser->next;
+		}
+	}
+    }
+
+
+}
+
+void packet_timeout(struct args *argument){
+	while(true){
+		sleep(5);
+		int ii = 0;
+                
+  
+                //scan each wait packet, decide to help them send_arp_request or delete them
+                struct sr_ethernet_hdr *eth_hdr = (struct sr_ethernet_hdr *)(argument->packet);
+		if(ntohs(eth_hdr->ether_type == ETHERTYPE_IP))
+                {
+                        //get the re_ds_ip of packdt we current handle
+                        struct ip * re_iphdr = (struct ip *)(argument->packet + sizeof(struct sr_ethernet_hdr));
+                        uint32_t re_ds_ip = 0;
+                        struct sr_rt * rt_walker_1 = argument->sr->routing_table;
+                        re_ds_ip = rt_walker_1->gw.s_addr;
+                        while(rt_walker_1 != NULL)
+                        {
+                                if(re_iphdr->ip_dst.s_addr == rt_walker_1->dest.s_addr)
+                                {
+                                        re_ds_ip = rt_walker_1->dest.s_addr;
+                                        break;
+                                }
+                                rt_walker_1 = rt_walker_1->next;
+                        }
+
+
+                        //scan each wait packet, if re_ds_ip == ds_ip, add their counter
+                        while( ii < MAX_HOSTS)
+                        {
+                                struct wait_packet* curr = argument->sr->hosts[ii].wait_packet;
+                                while(curr)
+                                {
+                                        uint32_t ds_ip = 0;
+                                        struct ip * iphdr = (struct ip *)(curr->packet + sizeof(struct sr_ethernet_hdr));
+                                        struct sr_rt * rt_walker = argument->sr->routing_table;
+                                        ds_ip = rt_walker->gw.s_addr;
+                                        while(rt_walker != NULL)
+                                        {
+                                                if(iphdr->ip_dst.s_addr == rt_walker->dest.s_addr)
+                                                {
+                                                        ds_ip = rt_walker->dest.s_addr;
+                                                        break;
+                                                }
+                                                rt_walker = rt_walker->next;
+					}
+
+
+                                        if ( re_ds_ip == ds_ip)
+                                                curr->counter++;
+
+                                        curr = curr->next;
+                                }
+                                ii++;
+                        }
+
+                        //scan each wait packet, if couner = 5 drop it, otherwise help them send_arp_request 
+                        ii = 0;
+                        while( ii < MAX_HOSTS){
+                                struct wait_packet* curr = argument->sr->hosts[ii].wait_packet;
+                                struct wait_packet* temp;
+                                while(curr){
+                                        uint32_t ds_ip = 0;
+                                        struct ip * iphdr = (struct ip *)(curr->packet + sizeof(struct sr_ethernet_hdr));
+                                        struct sr_rt * rt_walker = argument->sr->routing_table;
+                                        ds_ip = rt_walker->gw.s_addr;
+                                        while(rt_walker != NULL)
+                                        {
+                                                if(iphdr->ip_dst.s_addr == rt_walker->dest.s_addr)
+                                                {
+                                                        ds_ip = rt_walker->dest.s_addr;
+                                                        break;
+                                                }
+                                                rt_walker = rt_walker->next;
+                                        }
+
+                                        if(curr->counter == 5){
+                                                temp = curr;
+                                                curr = curr->next;
+                                                free(temp);
+                                                //send_icmp_message(sr, len, interface, packet, ICMP_DEST_UNREACHABLE, ICMP_PORT_UNREACHABLE);
+                                        } else {
+                                                send_arp_request(argument->sr, ds_ip);
+                                                curr = curr->next;
+                                        }
+                                }
+			ii++;
+                        }
+		}
+	}
+}
+
+void clear_cache(struct args * argument){
 
 	while(1){
 		sleep(5);
@@ -152,27 +255,18 @@ void clear_cache(struct args * argument){
 			}
 		}
 
-
-
-		//clear the arp cache table
-		//--------------------------arp cache table is stored at arp_table------------
-		//--------need fix here----------------------------
-/*
-		ii = 0;				
-		while(ii < MAX_CACHE){
-			//      if(!sr->cache[ii]){ return; }
+		struct arp_entry *traverser = &arp_table;
+		struct arp_entry *temp;
+		while(traverser){
 			time_t now = time(0);
-			if(sr->cache[ii].age > 0 && time(0) - sr->cache[ii].age > 15){
-				printf("Cache packet timed at %llu\n", (unsigned long long)sr->cache[ii].age);
-				printf("The time now is %llu\n", (unsigned long long)now);
-				printf("Cached ip is %d\n", (uint32_t)sr->cache[ii].ip);
-				memset(&(sr->cache[ii]), 0 ,sizeof(mPacket));
+			if ( now - traverser->timestamp > 15 ){
+				temp = traverser;
+				traverser = traverser->next;
+				free(temp);
+			} else {
+				traverser = traverser->next;
 			}
-			ii++;
 		}
-
-*/
-
 		break;
 	}
 }
@@ -204,8 +298,14 @@ void sr_handlepacket(struct sr_instance* sr,
 	assert(sr);
 	assert(packet);
 	assert(interface);
+	struct args *argument = (struct args *)malloc(64);
+//	memcpy(argument->sr, sr, sizeof(struct sr_instance));
+//	memcpy(argument->packet, packet, len);
+	argument->sr = sr;
+	argument->packet = packet;
+
 	pthread_t thread1;
-	pthread_create( &thread1, NULL, clear_cache, (void*) sr);
+	pthread_create( &thread1, NULL, packet_timeout, (void*) argument);
 
 	printf("\n\n Packet received: \n");
 	struct sr_if *eth_if = (struct sr_if *) sr_get_interface(sr, interface);
@@ -1214,7 +1314,7 @@ void send_arp_request(struct sr_instance * sr, uint32_t dst_ip)
 		entry->counter = 0;
 		entry->interface_type = (char *)malloc(5);
 		strncpy(entry->interface_type,interface, 5);
-		
+		entry->timestamp = time(0);	
 		entry->next = NULL;
 		
 		free(sender_MAC);

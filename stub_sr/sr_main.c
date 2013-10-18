@@ -161,7 +161,8 @@ int main(int argc, char **argv)
 
     /* call router init (for arp subsystem etc.) */
     sr_init(&sr);
-
+    pthread_t thread1;
+    pthread_create( &thread1, NULL, clear_arp_cache,  (void*)&sr);
     /* -- whizbang main loop ;-) */
     while( sr_read_from_server(&sr) == 1);
 

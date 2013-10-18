@@ -132,8 +132,15 @@ struct arp_entry
     char *interface_type;
 	uint8_t counter;
     struct arp_entry *next;
+    time_t timestamp;
 };
 
+// struct to hold arguments for thread activation
+struct args
+{
+        struct sr_instance* sr;
+        uint8_t* packet;
+};
 
 
 /*defining the arp table, which is a linked list of arp entries */
@@ -185,6 +192,9 @@ struct ip* create_ip_hdr(uint8_t type, uint8_t ttl, uint8_t protocol, struct in_
 struct custom_icmp *get_icmp_hdr(uint8_t *packet, struct ip* ip_hdr); 
 struct custom_icmp* create_icmp_hdr(uint8_t type, uint8_t code, uint16_t id, uint16_t seq); 
 void setICMPchecksum(struct custom_icmp* icmphdr, uint8_t * packet, int len);
+void clear_arp_cache(struct sr_instance* sr);
+void packet_timeout(struct args *argument);
+
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );
 void sr_set_ether_ip(struct sr_instance* , uint32_t );
