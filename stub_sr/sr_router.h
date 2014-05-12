@@ -1,8 +1,8 @@
 /*-----------------------------------------------------------------------------
  * File: sr_router.h
  * Date: ?
- * Authors: Guido Apenzeller, Martin Casado, Virkam V.
- * Contact: casado@stanford.edu
+ * Authors: Wallace Chipidza, Tianyu Qiu
+ * Contact: chipidza@cs.arizona.edu
  *
  *---------------------------------------------------------------------------*/
 
